@@ -377,4 +377,4 @@ Other selected backends receive the equivalent representation that Narwhals can 
 
 ## License
 
-XQDB is licensed under the [BSD-3-Clause](https://github.com/xbbg-org/xqdb/blob/main/LICENSE) permissive open-source license, which permits use in proprietary and commercial applications.
+XQDB is licensed under the [BSD-3-Clause](https://github.com/underloam/xqdb/blob/main/LICENSE) permissive open-source license, which permits use in proprietary and commercial applications.

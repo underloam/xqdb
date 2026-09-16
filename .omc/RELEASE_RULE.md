@@ -17,7 +17,6 @@ fails the release on any mismatch.
 | `js-xqdb/npm/win32-x64-msvc/package.json`     | `version`                                                      |
 | `js-xqdb/npm/linux-x64-gnu/package.json`      | `version`                                                      |
 | `js-xqdb/npm/darwin-arm64/package.json`       | `version`                                                      |
-| `js-xqdb/test/package.test.ts`                | `expect(root.version).toBe(...)` — asserts the literal version   |
 
 The Python distribution has no version field: `pyproject.toml` sets
 `dynamic = ["version"]` and setuptools-scm derives it from the git tag, so
@@ -64,12 +63,12 @@ above.
 - **npm**: push a `v*` tag. `NPM.yml` builds all three native targets, packs,
   smoke-tests, and publishes.
 - **PyPI**: manual `workflow_dispatch` of `CI.yml` with `dry-run: false`, from the
-  default branch, and only on repository `xbbg-org/xqdb`. A tag push does not
+  default branch, and only on repository `underloam/xqdb`. A tag push does not
   publish to PyPI. The `source` job requires the exact `v<version>` tag on the
   dispatched commit, so push the tag before dispatching.
-- Tags must be pushed to the `xqdb` remote (`xbbg-org/xqdb`). `Taskfile.yml`'s
-  `tag` task pushes to `origin`, which is `jshinonome/kola` — the upstream this
-  project forked from. Do not use it.
+- Tags must be pushed to the `xqdb` remote (`underloam/xqdb`). `task tag`
+  defaults to that remote. Before overriding `REMOTE`, confirm it points to
+  the release repository rather than the upstream project.
 
 ### Publish jobs wait for an environment approval
 
@@ -80,9 +79,9 @@ until someone approves the deployment — the v0.1.6 npm run waited three days
 unnoticed. Approve from the run page or with:
 
 ```bash
-run_id=$(gh run list --repo xbbg-org/xqdb --workflow NPM.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-env_id=$(gh api "repos/xbbg-org/xqdb/actions/runs/$run_id/pending_deployments" --jq '.[0].environment.id')
-gh api -X POST "repos/xbbg-org/xqdb/actions/runs/$run_id/pending_deployments" \
+run_id=$(gh run list --repo underloam/xqdb --workflow NPM.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+env_id=$(gh api "repos/underloam/xqdb/actions/runs/$run_id/pending_deployments" --jq '.[0].environment.id')
+gh api -X POST "repos/underloam/xqdb/actions/runs/$run_id/pending_deployments" \
   -f "environment_ids[]=$env_id" -f state=approved -f comment="release"
 ```
 
@@ -161,7 +160,15 @@ part from `git log <prev-tag>..HEAD --no-merges --format="%s"`.
 
 ## First-Time Setup Gaps
 
-None. Release workflows exist, build artifacts are gitignored, and tags are in
+Before the first release after an organization rename, configure the npm
+trusted publishers for `@xbbg/xqdb`, `@xbbg/xqdb-win32-x64-msvc`,
+`@xbbg/xqdb-linux-x64-gnu`, and `@xbbg/xqdb-darwin-arm64` with owner
+`underloam`, repository `xqdb`, workflow `NPM.yml`, and environment `npm`.
+Configure the PyPI publisher for `xqdb` with owner `underloam`, repository
+`xqdb`, workflow `CI.yml`, and environment `pypi`. Preserve the required
+reviewers and other protections on both GitHub environments.
+
+Release workflows exist, build artifacts are gitignored, and tags are in
 use (`v0.1.0` through `v0.1.6`). npm has published `0.1.3` through `0.1.5`; PyPI
 has `0.1.1` through `0.1.3` — the 0.1.4–0.1.6 Python releases were never
 dispatched, so the next PyPI release note must carry the 0.1.4 timestamp

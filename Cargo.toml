@@ -7,7 +7,7 @@ default-members = ["crates/*"]
 version = "0.1.8"
 authors = ["XQDB contributors"]
 edition = "2021"
-repository = "https://github.com/xbbg-org/xqdb"
+repository = "https://github.com/underloam/xqdb"
 license = "BSD-3-Clause"
 description = "a backend-agnostic Python dataframe interface to q"
 

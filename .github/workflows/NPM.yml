@@ -336,11 +336,11 @@ jobs:
           retention-days: 7
           path: js-xqdb/artifacts/*.tgz
 
-  # Trusted publisher claim: xbbg-org/xqdb, workflow NPM.yml, environment npm.
+  # Trusted publisher claim: underloam/xqdb, workflow NPM.yml, environment npm.
   # Renaming this file or environment requires re-registering every npm package.
   publish:
     name: Publish npm packages
-    if: needs.source.outputs.publish == 'true' && github.repository == 'xbbg-org/xqdb'
+    if: needs.source.outputs.publish == 'true' && github.repository == 'underloam/xqdb'
     needs: [source, assemble]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -495,7 +495,7 @@ jobs:
           node --input-type=module -e 'const { serializeAsIpcBytes6 } = await import("@xbbg/xqdb"); const bytes = await serializeAsIpcBytes6("sync", false, 42); if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new Error("published package returned no bytes");'
   github-release:
     name: Attach npm packages to GitHub Release
-    if: needs.source.outputs.publish == 'true' && github.repository == 'xbbg-org/xqdb'
+    if: needs.source.outputs.publish == 'true' && github.repository == 'underloam/xqdb'
     needs: [source, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10

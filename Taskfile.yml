@@ -170,7 +170,7 @@ tasks:
 
   # The release remote, not `origin`: `origin` is jshinonome/kola, the upstream
   # this project forked from. Pushing a tag there aims an immutable ref at a
-  # third party and never triggers the npm release, which runs on xbbg-org/xqdb.
+  # third party and never triggers the npm release, which runs on underloam/xqdb.
   tag:
     vars:
       REMOTE: '{{.REMOTE | default "xqdb"}}'

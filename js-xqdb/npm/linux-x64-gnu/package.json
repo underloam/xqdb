@@ -23,7 +23,7 @@
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xbbg-org/xqdb.git",
+    "url": "git+https://github.com/underloam/xqdb.git",
     "directory": "js-xqdb"
   },
   "publishConfig": {

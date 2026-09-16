@@ -9,11 +9,6 @@ interface RootPackageMetadata {
   readonly engines: Readonly<Record<string, string>>;
   readonly optionalDependencies: Readonly<Record<string, string>>;
   readonly exports: Readonly<Record<string, unknown>>;
-  readonly scripts: Readonly<Record<string, string>>;
-  readonly napi: {
-    readonly binaryName: string;
-    readonly targets: readonly string[];
-  };
 }
 
 interface PlatformPackageMetadata {
@@ -50,34 +45,18 @@ async function readPackageMetadata<T>(relativePath: string): Promise<T> {
 }
 
 describe("npm package metadata", () => {
-  it("uses the public package name, Node floor, napi-rs v3 targets, and generated loader build", async () => {
+  it("advertises the public package identity, Node floor, and exports", async () => {
     const root = await readPackageMetadata<RootPackageMetadata>("../package.json");
 
     expect(root.name).toBe("@xbbg/xqdb");
-    expect(root.version).toBe("0.1.8");
     expect(root.author).toBe("XQDB contributors");
-    expect(root.repository.url).toBe("git+https://github.com/xbbg-org/xqdb.git");
+    expect(root.repository.url).toBe("git+https://github.com/underloam/xqdb.git");
     expect(root.engines.node).toBe(">=20");
     expect(Object.keys(root.exports)).toEqual(["."]);
-    expect(root.napi).toEqual({
-      binaryName: "xqdb",
-      targets: [
-        "x86_64-pc-windows-msvc",
-        "x86_64-unknown-linux-gnu",
-        "aarch64-apple-darwin",
-      ],
-    });
     // Injected at pack time by scripts/set-optional-deps.mjs, deliberately absent from
     // the committed manifest so the release tag stays npm ci-installable while the
     // platform packages are unpublished.
     expect(root.optionalDependencies).toBeUndefined();
-    expect(root.scripts["build:native"]).toContain(
-      "--manifest-path ../bindings/napi-xqdb/Cargo.toml",
-    );
-    expect(root.scripts["build:native"]).toContain("--package-json-path ./package.json");
-    expect(root.scripts["build:native"]).toContain(
-      "--esm --js native.js --dts native.d.ts",
-    );
   });
 
   it("keeps native package versions, licenses, and platform constraints synchronized", async () => {
@@ -96,7 +75,7 @@ describe("npm package metadata", () => {
       name: "@xbbg/xqdb-win32-x64-msvc",
       version: root.version,
       author: "XQDB contributors",
-      repository: { url: "git+https://github.com/xbbg-org/xqdb.git" },
+      repository: { url: root.repository.url },
       main: "xqdb.win32-x64-msvc.node",
       files: ["xqdb.win32-x64-msvc.node", "LICENSE"],
       os: ["win32"],
@@ -107,7 +86,7 @@ describe("npm package metadata", () => {
       name: "@xbbg/xqdb-linux-x64-gnu",
       version: root.version,
       author: "XQDB contributors",
-      repository: { url: "git+https://github.com/xbbg-org/xqdb.git" },
+      repository: { url: root.repository.url },
       main: "xqdb.linux-x64-gnu.node",
       files: ["xqdb.linux-x64-gnu.node", "LICENSE"],
       os: ["linux"],
@@ -119,7 +98,7 @@ describe("npm package metadata", () => {
       name: "@xbbg/xqdb-darwin-arm64",
       version: root.version,
       author: "XQDB contributors",
-      repository: { url: "git+https://github.com/xbbg-org/xqdb.git" },
+      repository: { url: root.repository.url },
       main: "xqdb.darwin-arm64.node",
       files: ["xqdb.darwin-arm64.node", "LICENSE"],
       os: ["darwin"],

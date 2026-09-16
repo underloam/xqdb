@@ -54,7 +54,7 @@ benchmark = [
 ]
 
 [project.urls]
-Repository = "https://github.com/xbbg-org/xqdb"
+Repository = "https://github.com/underloam/xqdb"
 
 [tool.setuptools_scm]
 tag_regex = '^v(?P<version>\d+\.\d+\.\d+(?:(?:a|b|rc|alpha|beta)\d+)?)$'
