@@ -30,18 +30,26 @@ fmt-check-rs = "cargo fmt --all -- --check"
 venv = """python -c "from pathlib import Path; import subprocess; subprocess.run(['uv', 'venv', '--python', '3.12', '.venv'], check=True) if not Path('.venv/pyvenv.cfg').is_file() else None" && uv pip install --python .venv --group dev --group benchmark"""
 build-python = { cmd = "uv pip install --python .venv --reinstall -e .", env = { SETUPTOOLS_RUST_CARGO_PROFILE = "release" } }
 test-python = "uv run --no-project --python .venv pytest -q py-xqdb/test"
+lint-python = "uv run --no-project --python .venv ruff check ."
+fmt-python = "uv run --no-project --python .venv ruff format ."
+fmt-check-python = "uv run --no-project --python .venv ruff format --check ."
+check-python = { depends-on = ["lint-python", "fmt-check-python"] }
 benchmark-python = "uv run --no-project --python .venv python benchmarks/python/bench.py"
 
 # ── Features ──────────────────────────────────────────────────────────────────
 
 [feature.js.dependencies]
-nodejs = ">=22"
+nodejs = ">=24.12"
 
 [feature.js.tasks]
-js-install = { cmd = "npm install --no-audit --no-fund", cwd = "js-xqdb" }
+js-install = { cmd = "npm ci --no-audit --no-fund && npm ci --prefix ../benchmarks/node --ignore-scripts --no-audit --no-fund", cwd = "js-xqdb" }
 js-build = { cmd = "npm run build:release", cwd = "js-xqdb" }
 js-test = { cmd = "npm test", cwd = "js-xqdb" }
 js-test-live = { cmd = "npm run test:live", cwd = "js-xqdb" }
+js-lint = { cmd = "npm run lint", cwd = "js-xqdb" }
+js-format = { cmd = "npm run format", cwd = "js-xqdb" }
+js-format-check = { cmd = "npm run format:check", cwd = "js-xqdb" }
+js-check = { cmd = "npm run check", cwd = "js-xqdb" }
 js-benchmark-install = { cmd = "npm install --no-audit --no-fund", cwd = "benchmarks/node" }
 js-benchmark = { cmd = "node --expose-gc bench.mjs", cwd = "benchmarks/node", depends-on = [
   "js-build",

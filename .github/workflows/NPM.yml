@@ -152,6 +152,17 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
+  live-q:
+    name: Live q release gate
+    if: needs.source.outputs.publish == 'true' && github.repository == 'underloam/xqdb'
+    needs: source
+    uses: ./.github/workflows/Live.yml
+    with:
+      sha: ${{ needs.source.outputs.commit }}
+    secrets:
+      KX_BEARER_TOKEN: ${{ secrets.KX_BEARER_TOKEN }}
+      KDB_LICENSE_B64: ${{ secrets.KDB_LICENSE_B64 }}
+
   windows-x64-msvc:
     name: Build Windows x64 MSVC package
     needs: source
@@ -222,7 +233,7 @@ jobs:
           mkdir -p artifacts
           cp xqdb.linux-x64-gnu.node npm/linux-x64-gnu/xqdb.linux-x64-gnu.node
           npm pack ./npm/linux-x64-gnu --pack-destination artifacts
-          cp native.js native.d.ts artifacts/
+          cp native.cjs native.d.ts artifacts/
       - name: Upload native package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -231,7 +242,7 @@ jobs:
           retention-days: 7
           path: |
             js-xqdb/artifacts/*.tgz
-            js-xqdb/artifacts/native.js
+            js-xqdb/artifacts/native.cjs
             js-xqdb/artifacts/native.d.ts
 
   macos-arm64:
@@ -301,7 +312,7 @@ jobs:
         env:
           VERSION: ${{ needs.source.outputs.version }}
         run: |
-          cp artifacts/native.js native.js
+          cp artifacts/native.cjs native.cjs
           cp artifacts/native.d.ts native.d.ts
           npm run build:ts
           # The committed manifest carries no optionalDependencies, so the release tag
@@ -341,7 +352,7 @@ jobs:
   publish:
     name: Publish npm packages
     if: needs.source.outputs.publish == 'true' && github.repository == 'underloam/xqdb'
-    needs: [source, assemble]
+    needs: [source, assemble, live-q]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:

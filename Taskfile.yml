@@ -21,6 +21,30 @@ tasks:
     cmds:
       - cargo test
 
+  lint-python:
+    cmds:
+      - uv run --no-project --python .venv ruff check .
+      - uv run --no-project --python .venv ruff format --check .
+
+  format-python:
+    cmds:
+      - uv run --no-project --python .venv ruff check --fix .
+      - uv run --no-project --python .venv ruff format .
+
+  lint-node:
+    dir: js-xqdb
+    cmds:
+      - npm run check
+
+  format-node:
+    dir: js-xqdb
+    cmds:
+      - npm run lint:fix
+      - npm run format
+
+  lint:
+    deps: [lint-python, lint-node]
+
   build-python:
     cmds:
       - env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64 SETUPTOOLS_RUST_CARGO_PROFILE=release uv pip install --reinstall -e .
@@ -101,12 +125,16 @@ tasks:
           podman secret rm --ignore xqdb-kdb-license || status=$?
           exit "$status"
 
+  # Install/build before q starts so dependency tooling cannot access the runtime
+  # license. Unsetting secret variables is defense in depth, not a sandbox:
+  # same-user live test code can invoke Podman and arbitrary q expressions can
+  # read any license file the q process itself can read.
   test-python-podman:
     cmds:
       - defer:
           task: kdb-stop
-      - task: kdb-start
       - env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64 task build-python
+      - task: kdb-start
       - >-
         env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64
         XQDB_TEST_Q_EXTERNAL=1
@@ -119,9 +147,9 @@ tasks:
     cmds:
       - defer:
           task: kdb-stop
-      - XQDB_Q_ROWS=${XQDB_BENCH_ROWS:-100000} task kdb-start
       - env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64 task build-python-release
       - env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64 uv pip install --group benchmark
+      - XQDB_Q_ROWS=${XQDB_BENCH_ROWS:-100000} task kdb-start
       - >-
         env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64
         XQDB_TEST_Q_HOST=127.0.0.1
@@ -129,7 +157,6 @@ tasks:
         python benchmarks/python/bench.py
         --warmups ${XQDB_BENCH_WARMUPS:-3}
         --iterations ${XQDB_BENCH_ITERATIONS:-50}
-
 
   build-node-release:
     dir: js-xqdb
@@ -140,8 +167,8 @@ tasks:
     cmds:
       - defer:
           task: kdb-stop
-      - XQDB_Q_ROWS=${XQDB_Q_ROWS:-10000} task kdb-start
       - task: build-node-release
+      - XQDB_Q_ROWS=${XQDB_Q_ROWS:-10000} task kdb-start
       - >-
         cd js-xqdb &&
         env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64
@@ -155,9 +182,9 @@ tasks:
     cmds:
       - defer:
           task: kdb-stop
-      - XQDB_Q_ROWS=${XQDB_BENCH_ROWS:-100000} task kdb-start
       - task: build-node-release
-      - cd benchmarks/node && npm install --no-audit --no-fund
+      - cd benchmarks/node && env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64 npm install --no-audit --no-fund
+      - XQDB_Q_ROWS=${XQDB_BENCH_ROWS:-100000} task kdb-start
       - >-
         cd benchmarks/node &&
         env -u KX_BEARER_TOKEN -u KDB_LICENSE_B64
@@ -176,9 +203,9 @@ tasks:
       REMOTE: '{{.REMOTE | default "xqdb"}}'
     preconditions:
       - sh: git remote get-url {{.REMOTE}}
-        msg: 'git remote {{.REMOTE}} is not configured; set REMOTE=<name> to override'
+        msg: "git remote {{.REMOTE}} is not configured; set REMOTE=<name> to override"
       - sh: '[ "$(git remote get-url {{.REMOTE}})" != "$(git remote get-url origin 2>/dev/null)" ] || [ "{{.REMOTE}}" = "origin" ]'
-        msg: 'refusing to tag: {{.REMOTE}} resolves to the same URL as origin'
+        msg: "refusing to tag: {{.REMOTE}} resolves to the same URL as origin"
     cmds:
       - git tag -a v{{.VERSION}} -m "XQDB {{.VERSION}}" && git push {{.REMOTE}} tag v{{.VERSION}}
 

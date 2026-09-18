@@ -1,0 +1,180 @@
+name: Live q integration
+
+# This workflow intentionally has no pull_request or pull_request_target trigger:
+# repository credentials must never be exposed to code from an untrusted fork.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/Live.yml"
+      - "Taskfile.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "crates/xqdb/**"
+      - "bindings/napi-xqdb/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "py-xqdb/**"
+      - "js-xqdb/**"
+      - "testing/kdb/**"
+  workflow_call:
+    inputs:
+      sha:
+        description: Exact trusted commit to test
+        required: true
+        type: string
+    secrets:
+      KX_BEARER_TOKEN:
+        required: true
+      KDB_LICENSE_B64:
+        required: true
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Trusted commit on the repository default branch (defaults to the dispatch ref)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  live-q:
+    if: github.event_name != 'push' || github.repository == 'underloam/xqdb'
+    name: Python and Node against live q
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify trusted immutable source
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          if [[ -n "$REQUESTED_SHA" ]]; then
+            requested="$(git rev-parse "$REQUESTED_SHA^{commit}")"
+            if [[ "$actual" != "$requested" ]]; then
+              echo "Checked out $actual instead of requested commit $requested." >&2
+              exit 1
+            fi
+          fi
+          git fetch --no-tags origin "+refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+          if ! git merge-base --is-ancestor "$actual" "refs/remotes/origin/$DEFAULT_BRANCH"; then
+            echo "Live q credentials are restricted to commits on the repository default branch." >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: stable
+          cache: false
+      - name: Install Task and Podman
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/go-task/task/v3/cmd/task@v3.45.4
+          sudo apt-get update
+          sudo apt-get install --yes podman
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: js-xqdb/package-lock.json
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          toolchain: 1.98.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: live-q
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: latest-known
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+            Cargo.lock
+
+      - name: Build Python client before fixture startup
+        shell: bash
+        env:
+          SETUPTOOLS_RUST_CARGO_PROFILE: release
+        run: |
+          set -euo pipefail
+          uv venv --python 3.14 .venv
+          uv pip install --python .venv/bin/python --group dev --editable .
+      - name: Build Node client before fixture startup
+        shell: bash
+        working-directory: js-xqdb
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build:release
+      - name: Require live q credentials
+        shell: bash
+        env:
+          KX_BEARER_TOKEN: ${{ secrets.KX_BEARER_TOKEN }}
+          KDB_LICENSE_B64: ${{ secrets.KDB_LICENSE_B64 }}
+        run: |
+          set -euo pipefail
+          [[ -n "$KX_BEARER_TOKEN" ]] || { echo "KX_BEARER_TOKEN is not configured." >&2; exit 1; }
+          [[ -n "$KDB_LICENSE_B64" ]] || { echo "KDB_LICENSE_B64 is not configured." >&2; exit 1; }
+
+      # Secret variables are scoped to fixture lifecycle steps, which prevents
+      # accidental exposure during dependency install/build. This is defense in
+      # depth, not a same-runner sandbox: subsequent tests and their runtime
+      # dependencies can invoke Podman, and the tests intentionally execute
+      # arbitrary q. They could therefore read any license file that q itself
+      # can read. The source trust check above excludes untrusted fork code.
+      - name: Build q fixture image
+        shell: bash
+        env:
+          KX_BEARER_TOKEN: ${{ secrets.KX_BEARER_TOKEN }}
+          KDB_LICENSE_B64: ${{ secrets.KDB_LICENSE_B64 }}
+        run: task kdb-build
+      - name: Start q fixture
+        shell: bash
+        env:
+          KDB_LICENSE_B64: ${{ secrets.KDB_LICENSE_B64 }}
+        run: task kdb-start
+
+      - name: Run Python live tests with secret variables unset
+        shell: bash
+        env:
+          XQDB_TEST_Q_EXTERNAL: "1"
+          XQDB_TEST_Q_HOST: 127.0.0.1
+          XQDB_TEST_Q_PORT: "1801"
+          XQDB_Q_ROWS: "10000"
+        run: .venv/bin/python -m pytest -q py-xqdb/test
+
+      - name: Run Node live tests with secret variables unset
+        shell: bash
+        working-directory: js-xqdb
+        env:
+          XQDB_TEST_Q_EXTERNAL: "1"
+          XQDB_TEST_Q_HOST: 127.0.0.1
+          XQDB_TEST_Q_PORT: "1801"
+          XQDB_Q_ROWS: "10000"
+        run: npm run test:live
+
+      - name: Stop q fixture and remove runtime secret
+        if: always()
+        shell: bash
+        run: task kdb-stop

@@ -1,0 +1,29 @@
+{
+  "$schema": "./js-xqdb/node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "all",
+  "endOfLine": "lf",
+  "insertFinalNewline": true,
+  // Avoid reordering conditional package exports or side-effecting imports.
+  "sortPackageJson": false,
+  "sortImports": false,
+  // Keep generated shims, dependency locks and immutable benchmark reports untouched.
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/target/**",
+    ".pixi/**",
+    ".venv/**",
+    "js-xqdb/native.cjs",
+    "js-xqdb/native.d.ts",
+    "js-xqdb/npm/**",
+    "js-xqdb/artifacts/**",
+    "**/package-lock.json",
+    "benchmarks/results/**",
+    ".omc/**",
+  ],
+}

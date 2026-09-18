@@ -72,6 +72,17 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           fi
 
+  live-q:
+    name: Live q release gate
+    if: inputs.dry-run == false
+    needs: source
+    uses: ./.github/workflows/Live.yml
+    with:
+      sha: ${{ needs.source.outputs.commit }}
+    secrets:
+      KX_BEARER_TOKEN: ${{ secrets.KX_BEARER_TOKEN }}
+      KDB_LICENSE_B64: ${{ secrets.KDB_LICENSE_B64 }}
+
   linux:
     needs: source
     runs-on: ubuntu-latest
@@ -207,7 +218,7 @@ jobs:
     if: inputs.dry-run == false && inputs.sha == '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.repository == 'underloam/xqdb'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [source, linux, windows, macos, sdist]
+    needs: [source, live-q, linux, windows, macos, sdist]
     environment:
       name: pypi
       url: https://pypi.org/project/xqdb

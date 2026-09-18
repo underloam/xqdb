@@ -304,10 +304,26 @@ function Initialize-PythonEnvironment {
     }
 }
 
+function Clear-KdbCredentialEnvironment {
+    [Environment]::SetEnvironmentVariable("KX_BEARER_TOKEN", $null, "Process")
+    [Environment]::SetEnvironmentVariable("KDB_LICENSE_B64", $null, "Process")
+}
+
+function Restore-KdbCredentialEnvironment {
+    foreach ($name in @("KX_BEARER_TOKEN", "KDB_LICENSE_B64")) {
+        [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], "Process")
+    }
+}
+
+# Build/install before q starts so dependency tooling cannot inspect the runtime
+# Podman secret. Environment scoping is not a same-user sandbox: live tests can
+# invoke Podman and arbitrary q expressions can read files visible to q.
 function Test-KdbContainer {
+    Initialize-PythonEnvironment
+    Restore-KdbCredentialEnvironment
     Start-KdbContainer
+    Clear-KdbCredentialEnvironment
     try {
-        Initialize-PythonEnvironment
         $python = Join-Path $repoRoot ".venv/Scripts/python.exe"
         Push-Location $repoRoot
         try {
@@ -326,9 +342,11 @@ function Test-KdbContainer {
 }
 
 function Benchmark-KdbContainer {
+    Initialize-PythonEnvironment
+    Restore-KdbCredentialEnvironment
     Start-KdbContainer
+    Clear-KdbCredentialEnvironment
     try {
-        Initialize-PythonEnvironment
         $python = Join-Path $repoRoot ".venv/Scripts/python.exe"
         $arguments = @(
             "benchmarks/python/bench.py",
@@ -393,9 +411,11 @@ function Initialize-NodeEnvironment {
 }
 
 function Test-NodeKdbContainer {
+    Initialize-NodeEnvironment
+    Restore-KdbCredentialEnvironment
     Start-KdbContainer
+    Clear-KdbCredentialEnvironment
     try {
-        Initialize-NodeEnvironment
         Push-Location (Join-Path $repoRoot "js-xqdb")
         try {
             & npm run test:live
@@ -413,9 +433,11 @@ function Test-NodeKdbContainer {
 }
 
 function Benchmark-NodeKdbContainer {
+    Initialize-NodeEnvironment
+    Restore-KdbCredentialEnvironment
     Start-KdbContainer
+    Clear-KdbCredentialEnvironment
     try {
-        Initialize-NodeEnvironment
         $arguments = @(
             "--expose-gc", "bench.mjs",
             "--warmups", "$Warmups",

@@ -1,0 +1,140 @@
+{
+  "$schema": "./js-xqdb/node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error",
+  },
+  "options": {
+    "typeAware": true,
+    "maxWarnings": 0,
+    "reportUnusedDisableDirectives": "error",
+  },
+  "env": { "node": true, "es2022": true },
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/strict-boolean-expressions": "error",
+    // Keep the established named-export API and colocate declarations with exports.
+    "import/no-named-export": "off",
+    "import/prefer-default-export": "off",
+    "import/group-exports": "off",
+    "import/exports-last": "off",
+    "import/no-nodejs-modules": "off",
+    "import/no-namespace": "off",
+    "import/max-dependencies": "off",
+    // Prefer normal declarations without arbitrary syntax or file-size bans.
+    "eslint/one-var": ["error", "never"],
+    "eslint/func-style": ["error", "declaration", { "allowArrowFunctions": true }],
+    "eslint/no-ternary": "off",
+    "eslint/id-length": "off",
+    "eslint/max-lines": "off",
+    "eslint/max-lines-per-function": "off",
+    "eslint/max-statements": "off",
+    "eslint/max-classes-per-file": "off",
+    "eslint/sort-keys": "off",
+    "eslint/sort-imports": "off",
+    "eslint/sort-vars": "off",
+    "eslint/init-declarations": "off",
+    "eslint/no-magic-numbers": ["error", { "ignore": [-1, 0, 1, 2], "ignoreArrayIndexes": true }],
+    "eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
+    // Oxfmt owns hexadecimal casing and emits lowercase digits.
+    "unicorn/number-literal-case": "off",
+    // The typed rule recognizes functions that return a promise without awaiting it.
+    "eslint/require-await": "off",
+    // q IPC and benchmark rounds are intentionally sequential; null is a q value.
+    "eslint/no-await-in-loop": "off",
+    "unicorn/no-null": "off",
+    // Arrow/Buffer/native APIs expose mutable types; readonly parameters cannot enforce ownership.
+    "typescript/prefer-readonly-parameter-types": "off",
+    // Native constructors and socket callbacks need class fields and Promise adapters.
+    "typescript/parameter-properties": "off",
+    "typescript/method-signature-style": ["error", "method"],
+    "promise/avoid-new": "off",
+    // Keep resolve/reject roles explicit without shadowing names such as path.resolve.
+    "promise/param-names": [
+      "error",
+      {
+        "resolvePattern": "^_?resolve(?:[A-Z].*)?$",
+        "rejectPattern": "^_?reject(?:[A-Z].*)?$",
+      },
+    ],
+    // Keep Node 20.0 compatibility; import.meta.dirname/filename were added in Node 20.11.
+    "unicorn/prefer-import-meta-properties": "off",
+  },
+  "overrides": [
+    {
+      "files": ["**/test/**/*.ts"],
+      "rules": {
+        // Tests assert protocol bytes and expected values directly; extra assertion counters add no coverage.
+        "eslint/no-magic-numbers": "off",
+        "vitest/prefer-expect-assertions": "off",
+        "vitest/max-expects": "off",
+        // Fixtures use lifecycle hooks and discriminate results before checking their contents.
+        "vitest/no-hooks": "off",
+        "vitest/no-conditional-in-test": "off",
+        "vitest/no-conditional-expect": "off",
+        // Choose explicit imports and exact boolean assertions over conflicting alternatives.
+        "vitest/no-importing-vitest-globals": "off",
+        "vitest/prefer-to-be-truthy": "off",
+        "vitest/prefer-to-be-falsy": "off",
+      },
+    },
+    {
+      "files": ["js-xqdb/test/conversion.test.ts"],
+      "rules": {
+        // This helper asserts the public error class and code, and fails if no error is thrown.
+        "vitest/expect-expect": [
+          "error",
+          {
+            "assertFunctionNames": [
+              "expect",
+              "expectTypeOf",
+              "assert",
+              "assertType",
+              "expectConversionError",
+            ],
+          },
+        ],
+      },
+    },
+    {
+      "files": ["**/scripts/**", "**/test/**", "benchmarks/node/**"],
+      "rules": {
+        // Process setup, local fixture loading and benchmark provenance happen outside timed I/O.
+        "node/no-sync": "off",
+      },
+    },
+    {
+      "files": ["**/scripts/**", "benchmarks/node/**"],
+      "rules": {
+        // CLI entry points must execute at module scope, outside test lifecycle hooks.
+        "vitest/require-hook": "off",
+      },
+    },
+    {
+      "files": ["benchmarks/node/bench.mjs"],
+      "rules": {
+        // node-q is callback-only; typed adapters immediately convert its APIs with promisify.
+        "promise/prefer-await-to-callbacks": "off",
+      },
+    },
+  ],
+  // Generated native shims and compiler/packaging outputs are not hand-maintained.
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/target/**",
+    ".pixi/**",
+    ".venv/**",
+    "js-xqdb/native.cjs",
+    "js-xqdb/native.d.ts",
+    "js-xqdb/npm/**",
+    "js-xqdb/artifacts/**",
+  ],
+}

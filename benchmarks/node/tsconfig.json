@@ -1,0 +1,8 @@
+{
+  "extends": "../../js-xqdb/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "typeRoots": ["../../js-xqdb/node_modules/@types"]
+  },
+  "include": ["bench.mjs"]
+}
