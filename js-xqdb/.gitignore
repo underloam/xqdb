@@ -3,5 +3,5 @@ dist/
 artifacts/
 coverage/
 *.node
-/native.js
+/native.cjs
 /native.d.ts

@@ -1,19 +1,45 @@
-use std::io::Cursor;
+use std::io::{self, Cursor, Write};
 
 use polars::prelude::{DataFrame, IpcStreamReader, IpcStreamWriter, SerReader, SerWriter, Series};
 
 use crate::error::BindingError;
 
+#[derive(Default)]
+struct FallibleVecWriter {
+    bytes: Vec<u8>,
+}
+
+impl FallibleVecWriter {
+    fn into_inner(self) -> Vec<u8> {
+        self.bytes
+    }
+}
+
+impl Write for FallibleVecWriter {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        self.bytes.try_reserve(buffer.len()).map_err(|error| {
+            io::Error::other(format!(
+                "unable to grow Arrow IPC output by {} bytes: {error}",
+                buffer.len()
+            ))
+        })?;
+        self.bytes.extend_from_slice(buffer);
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 pub(crate) fn dataframe_to_ipc(mut dataframe: DataFrame) -> Result<Vec<u8>, BindingError> {
-    // Arrow IPC stream size tracks the in-memory footprint closely; reserving it upfront
-    // avoids repeated growth copies for large tables.
-    let mut bytes = Vec::with_capacity(dataframe.estimated_size() + 1024);
+    let mut bytes = FallibleVecWriter::default();
     IpcStreamWriter::new(&mut bytes)
         .finish(&mut dataframe)
         .map_err(|error| {
             BindingError::conversion(format!("failed to encode Arrow IPC stream: {error}"))
         })?;
-    Ok(bytes)
+    Ok(bytes.into_inner())
 }
 
 pub(crate) fn series_to_ipc(series: Series) -> Result<Vec<u8>, BindingError> {
@@ -45,7 +71,11 @@ pub(crate) fn series_from_ipc(bytes: Vec<u8>) -> Result<Series, BindingError> {
 
 #[cfg(test)]
 mod tests {
-    use polars::prelude::{DataFrame, NamedFrom, Series};
+    use polars::prelude::{Categories, DataFrame, DataType, NamedFrom, Series};
+    use xqdb::{
+        io::generate_j6_ipc_msg,
+        types::{MsgType, K},
+    };
 
     use super::{dataframe_from_ipc, dataframe_to_ipc, series_from_ipc, series_to_ipc};
 
@@ -55,6 +85,62 @@ mod tests {
         let decoded = series_from_ipc(series_to_ipc(series.clone()).expect("encode series"))
             .expect("decode series");
         assert_eq!(decoded, series);
+    }
+
+    #[test]
+    fn round_trips_empty_categorical_series_as_q_symbol_vector() {
+        let series = Series::new_empty(
+            "symbols".into(),
+            &DataType::Categorical(Categories::global(), Categories::global().mapping()),
+        );
+        let decoded =
+            series_from_ipc(series_to_ipc(series).expect("encode empty categorical series"))
+                .expect("decode empty categorical series");
+
+        assert!(matches!(decoded.dtype(), DataType::Categorical(_, _)));
+        assert_eq!(decoded.len(), 0);
+        let frame = generate_j6_ipc_msg(MsgType::Sync, false, K::Series(decoded))
+            .expect("serialize empty q symbol vector");
+        assert_eq!(&frame[8..], &[11, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn round_trips_populated_nullable_categorical_series_as_q_symbols() {
+        let series = Series::new("symbols".into(), [Some("AAPL"), None, Some("MSFT")])
+            .cast(&DataType::Categorical(
+                Categories::global(),
+                Categories::global().mapping(),
+            ))
+            .expect("categorical symbols");
+        let decoded = series_from_ipc(series_to_ipc(series).expect("encode categorical series"))
+            .expect("decode categorical series");
+
+        assert!(matches!(decoded.dtype(), DataType::Categorical(_, _)));
+        assert_eq!(decoded.len(), 3);
+        let frame = generate_j6_ipc_msg(MsgType::Sync, false, K::Series(decoded))
+            .expect("serialize q symbol vector");
+        assert_eq!(
+            &frame[8..],
+            &[11, 0, 3, 0, 0, 0, b'A', b'A', b'P', b'L', 0, 0, b'M', b'S', b'F', b'T', 0,]
+        );
+    }
+
+    #[test]
+    fn keeps_populated_utf8_series_as_q_string_list() {
+        let series = Series::new("strings".into(), ["AAPL", "MSFT"]);
+        let decoded = series_from_ipc(series_to_ipc(series).expect("encode UTF-8 series"))
+            .expect("decode UTF-8 series");
+
+        assert_eq!(decoded.dtype(), &DataType::String);
+        let frame = generate_j6_ipc_msg(MsgType::Sync, false, K::Series(decoded))
+            .expect("serialize q string list");
+        assert_eq!(
+            &frame[8..],
+            &[
+                0, 0, 2, 0, 0, 0, 10, 0, 4, 0, 0, 0, b'A', b'A', b'P', b'L', 10, 0, 4, 0, 0, 0,
+                b'M', b'S', b'F', b'T',
+            ]
+        );
     }
 
     #[test]

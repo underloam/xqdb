@@ -4,8 +4,23 @@ export interface NativeOptions {
   readonly user?: string;
   readonly password?: string;
   readonly tls?: boolean;
-  readonly timeoutSeconds?: number;
+  readonly timeoutMilliseconds?: number;
   readonly symbolEncoding?: string;
+  readonly lossless?: boolean;
+  readonly compression?: string;
+  readonly compressionThreshold?: number;
+  readonly connectTimeoutMilliseconds?: number;
+  readonly readTimeoutMilliseconds?: number;
+  readonly writeTimeoutMilliseconds?: number;
+  readonly maxMessageBytes?: number;
+  readonly maxPendingNotifications?: number;
+  readonly tlsCa?: string;
+  readonly tlsCert?: string;
+  readonly tlsKey?: string;
+  readonly tlsServerName?: string;
+  readonly queueCapacity?: number;
+  readonly maxArgumentBytes?: number;
+  readonly maxQueuedBytes?: number;
 }
 
 export interface NativeEntry {
@@ -23,6 +38,9 @@ export interface NativeValue {
   readonly bytesValue?: Uint8Array;
   readonly items?: NativeValue[];
   readonly entries?: NativeEntry[];
+  readonly typeCode?: number;
+  readonly length?: number;
+  readonly isTable?: boolean;
 }
 
 export interface NativeError {
@@ -34,19 +52,29 @@ export interface NativeResult {
   readonly ok: boolean;
   readonly value?: NativeValue;
   readonly error?: NativeError;
+  readonly messageType?: string;
+}
+
+export type NativePermit = object;
+
+export interface NativeAdmission {
+  readonly ok: boolean;
+  readonly permit?: NativePermit;
+  readonly error?: NativeError;
 }
 
 export interface NativeConnector {
-  connect(): Promise<NativeResult>;
-  disconnect(): Promise<NativeResult>;
-  sync(expression: string, args: NativeValue[]): Promise<NativeResult>;
-  asyn(expression: string, args: NativeValue[]): Promise<NativeResult>;
-  receive(): Promise<NativeResult>;
+  reserve(): NativeAdmission;
+  release(permit: NativePermit): NativeResult;
+  cancel(): NativeResult;
+  connect(permit: NativePermit, retries: number): Promise<NativeResult>;
+  disconnect(permit: NativePermit): Promise<NativeResult>;
+  sync(permit: NativePermit, expression: string, args: NativeValue[]): Promise<NativeResult>;
+  asyn(permit: NativePermit, expression: string, args: NativeValue[]): Promise<NativeResult>;
+  receive(permit: NativePermit): Promise<NativeResult>;
 }
 
-export interface NativeConnectorConstructor {
-  new (options: NativeOptions): NativeConnector;
-}
+export type NativeConnectorConstructor = new (options: NativeOptions) => NativeConnector;
 
 export interface NativeModule {
   readonly NativeConnector: NativeConnectorConstructor;
@@ -56,4 +84,19 @@ export interface NativeModule {
     compress: boolean,
     value: NativeValue,
   ): Promise<NativeResult>;
+  deserializeValue6(
+    body: Uint8Array,
+    symbolEncoding?: string,
+    lossless?: boolean,
+  ): Promise<NativeResult>;
+  deserializeIpcBytes6(
+    frame: Uint8Array,
+    symbolEncoding?: string,
+    lossless?: boolean,
+  ): Promise<NativeResult>;
+  qValueFromBytes(bytes: Uint8Array): Promise<NativeResult>;
+  qValueAtom(kind: number, payload: Uint8Array): Promise<NativeResult>;
+  qValueList(values: NativeValue[]): Promise<NativeResult>;
+  qValueDictionary(keys: NativeValue, values: NativeValue): Promise<NativeResult>;
+  qValueFromNative(value: NativeValue): Promise<NativeResult>;
 }

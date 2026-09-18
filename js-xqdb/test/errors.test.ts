@@ -16,19 +16,19 @@ describe("stable public errors", () => {
     const ioError = mapNativeError(ioPayload);
     expect(ioError).toBeInstanceOf(XqdbIOError);
     expect(ioError).toMatchObject({
-      name: "XqdbIOError",
-      code: "XQDB_IO",
-      nativeMessage: "connection reset",
       cause: ioPayload,
+      code: "XQDB_IO",
+      name: "XqdbIOError",
+      nativeMessage: "connection reset",
     });
 
     const authError = mapNativeError(authPayload);
     expect(authError).toBeInstanceOf(XqdbAuthError);
     expect(authError).toMatchObject({
-      name: "XqdbAuthError",
-      code: "XQDB_AUTH",
-      nativeMessage: "access denied",
       cause: authPayload,
+      code: "XQDB_AUTH",
+      name: "XqdbAuthError",
+      nativeMessage: "access denied",
     });
   });
 
@@ -39,7 +39,7 @@ describe("stable public errors", () => {
       const error = mapNativeError(payload);
       expect(error).toBeInstanceOf(XqdbError);
       expect(error).not.toBeInstanceOf(XqdbIOError);
-      expect(error).toMatchObject({ code, nativeMessage: "native detail", cause: payload });
+      expect(error).toMatchObject({ cause: payload, code, nativeMessage: "native detail" });
     },
   );
 
@@ -49,9 +49,9 @@ describe("stable public errors", () => {
 
     expect(error).toBeInstanceOf(XqdbIOError);
     expect(error).toMatchObject({
+      cause,
       code: "XQDB_IO",
       nativeMessage: "worker channel closed",
-      cause,
     });
   });
 });
