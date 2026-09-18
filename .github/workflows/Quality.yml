@@ -205,9 +205,15 @@ jobs:
               raise SystemExit(f"lowest-direct runtime mismatch: expected {expected}, got {actual}")
           PY
       - name: Run Python tests from the built wheel
-        # `py-xqdb/test` is a package, so pytest's default import mode would put
-        # `py-xqdb` first on sys.path and the source tree, which has no compiled
-        # extension here, would shadow the installed wheel. Append mode keeps
-        # site-packages ahead of it while leaving the test package importable for
-        # the spawn-based timeout test.
-        run: floor/bin/python -m pytest -q --import-mode=append py-xqdb/test
+        # Run the suite from a copy outside the checkout: with the test package on
+        # sys.path ahead of everything else, the source tree's `xqdb`, which has no
+        # compiled extension in this job, would shadow the installed wheel, and
+        # appending it instead would let the stdlib `test` package shadow the
+        # suite. The copy keeps `test.<module>` importable for the spawn-based
+        # timeout test while only the wheel provides `xqdb`.
+        shell: bash
+        run: |
+          set -euo pipefail
+          staging="$(mktemp -d)"
+          cp -R py-xqdb/test "$staging/test"
+          floor/bin/python -m pytest -q "$staging/test"
