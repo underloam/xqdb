@@ -7,8 +7,9 @@ use lz4_flex::frame::FrameDecoder;
 use polars::frame::DataFrame;
 use xxhash_rust::xxh32;
 
-use crate::connector::ipc_length_header;
+use crate::connector::{deserialize_ipc_frame, ipc_length_header};
 use crate::errors::XqdbError;
+use crate::qvalue::ValueMode;
 use crate::serde6;
 use crate::types::{MsgType, SymbolEncoding, K};
 
@@ -247,16 +248,18 @@ pub fn unzip_lz4(buf: &[u8], footer_index: usize, block_num: usize) -> Result<Ve
             .ok_or_else(|| XqdbError::Err("Kxzip footer is missing LZ4 block size".to_owned()))?,
         "LZ4 block size",
     )?;
+    if !((1usize << 12)..=(1usize << 22)).contains(&block_size) || !block_size.is_power_of_two() {
+        return Err(XqdbError::Err(format!(
+            "Unsupported Kxzip LZ4 logical block size {block_size}; expected a power of two from 4096 through 4194304"
+        )));
+    }
+    // The q footer records the logical power-of-two block size, while an LZ4 frame can only
+    // advertise 64 KiB, 256 KiB, 1 MiB, or 4 MiB. Use the smallest enclosing descriptor.
     let block_descriptor = match block_size {
-        65_536 => 0x40,
-        262_144 => 0x50,
-        1_048_576 => 0x60,
-        4_194_304 => 0x70,
-        _ => {
-            return Err(XqdbError::Err(format!(
-                "Unsupported Kxzip LZ4 block size {block_size}"
-            )))
-        }
+        ..=65_536 => 0x40,
+        65_537..=262_144 => 0x50,
+        262_145..=1_048_576 => 0x60,
+        _ => 0x70,
     };
     let unzipped_size = kxzip_usize(
         footer
@@ -267,6 +270,7 @@ pub fn unzip_lz4(buf: &[u8], footer_index: usize, block_num: usize) -> Result<Ve
 
     let mut frame_capacity = 19usize;
     let mut reachable_unzipped_size = 0usize;
+    let mut has_empty_block = false;
     let mut block_start = KXZIP_HEADER_LENGTH;
     for block_index in 0..block_num {
         let size = usize::try_from(lz4_block_size(footer, block_index)?).map_err(|_| {
@@ -274,6 +278,7 @@ pub fn unzip_lz4(buf: &[u8], footer_index: usize, block_num: usize) -> Result<Ve
                 "Kxzip LZ4 block {block_index} size cannot be represented on this platform"
             ))
         })?;
+        has_empty_block |= size == 0;
         let block_end = block_start.checked_add(size).ok_or_else(|| {
             XqdbError::Err(format!("Kxzip LZ4 block {block_index} range overflowed"))
         })?;
@@ -307,6 +312,11 @@ pub fn unzip_lz4(buf: &[u8], footer_index: usize, block_num: usize) -> Result<Ve
             "Kxzip declares {unzipped_size} decompressed bytes, unreachable from its {} compressed bytes, which expand to at most {reachable_unzipped_size}",
             footer_index - KXZIP_HEADER_LENGTH
         )));
+    }
+    if has_empty_block {
+        return Err(XqdbError::Err(
+            "Kxzip LZ4 metadata contains an empty block".to_owned(),
+        ));
     }
 
     let mut zipped_bytes = Vec::new();
@@ -358,7 +368,15 @@ pub fn unzip_lz4(buf: &[u8], footer_index: usize, block_num: usize) -> Result<Ve
         .map_err(decompression_error)?;
     let mut trailing = [0u8; 1];
     match decoder.read(&mut trailing).map_err(decompression_error)? {
-        0 => Ok(unzipped_bytes),
+        0 => {
+            let reader = decoder.into_inner();
+            if reader.position() != reader.get_ref().len() as u64 {
+                return Err(XqdbError::Err(
+                    "Kxzip LZ4 stream contains trailing encoded bytes".to_owned(),
+                ));
+            }
+            Ok(unzipped_bytes)
+        }
         _ => Err(XqdbError::Err(format!(
             "Kxzip LZ4 output exceeds declared size {unzipped_size}"
         ))),
@@ -393,8 +411,23 @@ pub fn generate_j6_ipc_msg(
     }
 }
 
-pub fn deserialize_j6(buf: &[u8], encoding: SymbolEncoding) -> Result<K, XqdbError> {
-    serde6::deserialize(buf, &mut 0, encoding)
+pub fn deserialize_j6(
+    buf: &[u8],
+    encoding: SymbolEncoding,
+    mode: ValueMode,
+) -> Result<K, XqdbError> {
+    match mode {
+        ValueMode::Native => serde6::deserialize(buf, &mut 0, encoding),
+        ValueMode::Lossless => crate::qvalue::QValue::from_bytes(buf).map(K::QValue),
+    }
+}
+
+pub fn deserialize_j6_ipc_msg(
+    buf: &[u8],
+    encoding: SymbolEncoding,
+    mode: ValueMode,
+) -> Result<(MsgType, K), XqdbError> {
+    deserialize_ipc_frame(buf, encoding, mode)
 }
 
 #[cfg(test)]
@@ -410,11 +443,17 @@ mod tests {
     use super::{checked_j6_ipc_total_length, MAX_LZ4_EXPANSION_RATIO};
     use crate::{
         io,
+        qvalue::ValueMode,
         serde6::{deserialize, serialize},
-        types::{SymbolEncoding, K},
+        types::{MsgType, SymbolEncoding, K},
     };
 
-    fn one_block_kxzip(block: &[u8], encoded_size: u32, unzipped_size: u64) -> Vec<u8> {
+    fn one_block_kxzip_with_logical_size(
+        block: &[u8],
+        encoded_size: u32,
+        unzipped_size: u64,
+        logical_block_size: u64,
+    ) -> Vec<u8> {
         let footer_index = 8 + block.len();
         let mut bytes = b"kxzipped".to_vec();
         bytes.extend_from_slice(block);
@@ -422,11 +461,31 @@ mod tests {
         footer[4] = 4;
         footer[8..16].copy_from_slice(&unzipped_size.to_le_bytes());
         footer[16..24].copy_from_slice(&(footer_index as u64).to_le_bytes());
-        footer[24..32].copy_from_slice(&65_536u64.to_le_bytes());
+        footer[24..32].copy_from_slice(&logical_block_size.to_le_bytes());
         footer[32..36].copy_from_slice(&encoded_size.to_le_bytes());
         footer[40..48].copy_from_slice(&1u64.to_le_bytes());
         bytes.extend_from_slice(&footer);
         bytes
+    }
+
+    fn one_block_kxzip(block: &[u8], encoded_size: u32, unzipped_size: u64) -> Vec<u8> {
+        one_block_kxzip_with_logical_size(block, encoded_size, unzipped_size, 65_536)
+    }
+
+    #[test]
+    fn unzip_rejects_an_early_end_marker_hiding_later_blocks() {
+        let hidden_block = lz4_flex::block::compress(b"hidden");
+        let mut bytes = b"kxzipped".to_vec();
+        bytes.extend_from_slice(&hidden_block);
+        let mut footer = vec![0u8; 56];
+        footer[4] = 4;
+        footer[16..24].copy_from_slice(&(bytes.len() as u64).to_le_bytes());
+        footer[24..32].copy_from_slice(&65_536u64.to_le_bytes());
+        footer[40..44].copy_from_slice(&(hidden_block.len() as u32).to_le_bytes());
+        footer[48..56].copy_from_slice(&2u64.to_le_bytes());
+        bytes.extend_from_slice(&footer);
+
+        assert!(io::unzip(&bytes).is_err());
     }
 
     #[test]
@@ -576,7 +635,7 @@ mod tests {
     fn deserialize_j6_rejects_trailing_bytes() {
         let mut bytes = serialize(&K::I32(42)).expect("test value should serialize");
         bytes.push(0);
-        let error = io::deserialize_j6(&bytes, SymbolEncoding::Strict)
+        let error = io::deserialize_j6(&bytes, SymbolEncoding::Strict, ValueMode::Native)
             .expect_err("trailing J6 bytes should fail");
         assert!(error.to_string().contains("trailing byte"));
     }
@@ -640,5 +699,109 @@ mod tests {
         let expect =
             DataFrame::new_infer_height(vec![sym.into(), qty.into(), price.into()]).unwrap();
         assert_eq!(df, expect);
+    }
+    #[test]
+    fn deserialize_ipc_message_retains_kind_and_validates_exact_framing() {
+        for (kind, value) in [
+            (MsgType::Async, K::I32(1)),
+            (MsgType::Sync, K::I32(2)),
+            (MsgType::Response, K::I32(3)),
+        ] {
+            let frame =
+                io::generate_j6_ipc_msg(kind, false, value).expect("valid in-memory IPC frame");
+            let (decoded_kind, decoded) =
+                io::deserialize_j6_ipc_msg(&frame, SymbolEncoding::Strict, ValueMode::Native)
+                    .expect("valid frame should decode");
+            assert!(matches!(
+                (decoded_kind, decoded),
+                (MsgType::Async, K::I32(1))
+                    | (MsgType::Sync, K::I32(2))
+                    | (MsgType::Response, K::I32(3))
+            ));
+        }
+
+        let valid =
+            io::generate_j6_ipc_msg(MsgType::Response, false, K::I32(42)).expect("valid frame");
+        for (index, invalid) in [(0usize, 0u8), (0, 2), (1, 3), (2, 3)] {
+            let mut frame = valid.clone();
+            frame[index] = invalid;
+            assert!(
+                io::deserialize_j6_ipc_msg(&frame, SymbolEncoding::Strict, ValueMode::Native,)
+                    .is_err(),
+                "invalid header byte {index} must fail"
+            );
+        }
+        assert!(io::deserialize_j6_ipc_msg(
+            &valid[..valid.len() - 1],
+            SymbolEncoding::Strict,
+            ValueMode::Native,
+        )
+        .is_err());
+        let mut trailing = valid;
+        trailing.push(0);
+        assert!(
+            io::deserialize_j6_ipc_msg(&trailing, SymbolEncoding::Strict, ValueMode::Native,)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn deserialize_ipc_message_supports_compressed_and_lossless_values() {
+        let body = serialize(&K::CharVector(vec![b'x'; 4096])).expect("value body");
+        let frame =
+            io::generate_j6_ipc_msg(MsgType::Response, true, K::CharVector(vec![b'x'; 4096]))
+                .expect("compressed frame");
+        assert_ne!(frame[2], 0);
+
+        let (kind, native) =
+            io::deserialize_j6_ipc_msg(&frame, SymbolEncoding::Strict, ValueMode::Native)
+                .expect("compressed native value");
+        assert!(matches!(kind, MsgType::Response));
+        assert_eq!(native, K::CharVector(vec![b'x'; 4096]));
+
+        let (kind, lossless) =
+            io::deserialize_j6_ipc_msg(&frame, SymbolEncoding::Strict, ValueMode::Lossless)
+                .expect("compressed lossless value");
+        assert!(matches!(kind, MsgType::Response));
+        match lossless {
+            K::QValue(value) => assert_eq!(value.as_bytes(), body),
+            value => panic!("expected lossless q value, got {value:?}"),
+        }
+    }
+
+    #[test]
+    fn lz4_accepts_q_logical_block_exponents_17_and_19() {
+        let raw = vec![b'q'; 4096];
+        let block = lz4_flex::block::compress(&raw);
+        for exponent in [12u32, 17, 19, 22] {
+            let file = one_block_kxzip_with_logical_size(
+                &block,
+                u32::try_from(block.len()).unwrap(),
+                raw.len() as u64,
+                1u64 << exponent,
+            );
+            assert_eq!(
+                io::unzip(&file).expect("legal q LZ4 logical block size"),
+                raw
+            );
+        }
+    }
+
+    #[test]
+    fn lz4_rejects_non_power_of_two_and_out_of_range_logical_sizes() {
+        let raw = vec![b'q'; 4096];
+        let block = lz4_flex::block::compress(&raw);
+        for logical_size in [(1u64 << 12) - 1, (1u64 << 17) + 1, 1u64 << 23] {
+            let file = one_block_kxzip_with_logical_size(
+                &block,
+                u32::try_from(block.len()).unwrap(),
+                raw.len() as u64,
+                logical_size,
+            );
+            assert!(
+                io::unzip(&file).is_err(),
+                "invalid logical size {logical_size} must fail"
+            );
+        }
     }
 }

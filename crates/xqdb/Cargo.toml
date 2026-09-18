@@ -24,6 +24,7 @@ lz4_flex = { version = "0.14.0", features = ["frame"] }
 indexmap = { workspace = true }
 bytemuck = "1.25"
 memchr = "2.8"
+socket2 = "0.6"
 
 [dependencies.polars]
 workspace = true
@@ -43,3 +44,6 @@ features = [
 [dependencies.xxhash-rust]
 version = "0.8.15"
 features = ["xxh3", "const_xxh3", "xxh32"]
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_IO"] }

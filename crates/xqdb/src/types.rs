@@ -7,7 +7,7 @@ use polars::{
 };
 use uuid::Uuid;
 
-use crate::errors::XqdbError;
+use crate::{errors::XqdbError, qvalue::QValue};
 
 pub const K_TYPE_SIZE: [usize; 20] = [0, 1, 16, 0, 1, 2, 4, 8, 4, 8, 1, 0, 8, 4, 4, 8, 8, 4, 4, 4];
 pub const MIN_Q_TIMESTAMP_UNIX_NANOS: i64 = i64::MIN + 946_684_800_000_000_000 + 2;
@@ -218,6 +218,7 @@ pub enum K {
     Series(Series),            // list, dictionaries
     DataFrame(DataFrame),      // table and keyed table
     Dict(IndexMap<String, K>), // dict, symbols -> atom or list
+    QValue(QValue),
     Operator(QOperator),
     Lambda(QLambda),
     Null,
@@ -340,6 +341,14 @@ impl K {
                     .checked_add(lambda.context().len())
                     .and_then(|length| length.checked_add(8))
                     .ok_or(XqdbError::OverLengthErr())
+            }
+            K::QValue(value) => {
+                if value.max_depth() > MAX_VALUE_DEPTH - depth {
+                    return Err(XqdbError::NotAbleToSerializeErr(format!(
+                        "q value nesting exceeds {MAX_VALUE_DEPTH} levels"
+                    )));
+                }
+                Ok(value.as_bytes().len())
             }
             K::Null => Ok(2),
             K::Dict(dict) => {
@@ -503,6 +512,7 @@ impl K {
             K::MixedList(_) => 0,
             K::DataFrame(_) => 98,
             K::Dict(_) => 99,
+            K::QValue(value) => value.type_code(),
             K::Operator(operator) => operator.k_type as i16,
             K::Lambda(_) => 100,
             K::Null => 101,
@@ -595,6 +605,67 @@ pub(crate) fn validate_q_symbol(value: &str) -> Result<(), XqdbError> {
         return Err(XqdbError::NotAbleToSerializeErr(
             "q symbols cannot contain NUL bytes".to_string(),
         ));
+    }
+    Ok(())
+}
+
+/// Resolves category ids to validated symbol text for one column.
+///
+/// Symbol columns repeat few distinct categories over many rows, so a small direct-mapped cache
+/// keyed by category id validates each distinct symbol once instead of scanning it per row; a
+/// high-cardinality column merely misses more often and pays the per-row cost it paid before.
+pub(crate) struct SymbolLookup<'a> {
+    mapping: &'a polars::prelude::CategoricalMapping,
+    slots: Vec<Option<(u32, &'a str)>>,
+}
+
+impl<'a> SymbolLookup<'a> {
+    const SLOTS: usize = 256;
+
+    pub(crate) fn new(mapping: &'a polars::prelude::CategoricalMapping) -> Self {
+        Self {
+            mapping,
+            slots: vec![None; Self::SLOTS],
+        }
+    }
+
+    pub(crate) fn resolve(&mut self, category: u32) -> Result<&'a str, XqdbError> {
+        let slot = &mut self.slots[category as usize % Self::SLOTS];
+        if let Some((cached, symbol)) = *slot {
+            if cached == category {
+                return Ok(symbol);
+            }
+        }
+        let symbol = self.mapping.cat_to_str(category).ok_or_else(|| {
+            XqdbError::NotAbleToSerializeErr(format!(
+                "categorical value {category} is missing from its category mapping"
+            ))
+        })?;
+        validate_q_symbol(symbol)?;
+        *slot = Some((category, symbol));
+        Ok(symbol)
+    }
+}
+
+/// Visits every row of a global categorical column as its category id, or `None` for a null,
+/// straight from the physical chunks so no per-row string resolution happens on the way.
+pub(crate) fn for_each_category(
+    categorical: &polars::prelude::Categorical32Chunked,
+    mut visit: impl FnMut(Option<u32>) -> Result<(), XqdbError>,
+) -> Result<(), XqdbError> {
+    for chunk in categorical.physical().downcast_iter() {
+        match chunk.validity() {
+            None => {
+                for &category in chunk.values().iter() {
+                    visit(Some(category))?;
+                }
+            }
+            Some(validity) => {
+                for (&category, valid) in chunk.values().iter().zip(validity.iter()) {
+                    visit(valid.then_some(category))?;
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -786,14 +857,20 @@ pub(crate) fn get_series_len(series: &Series) -> Result<usize, XqdbError> {
                 .cat32()
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             checked_q_count(length)?;
-            categorical.iter_str().try_fold(6usize, |length, value| {
-                let value = value.unwrap_or("");
-                validate_q_symbol(value)?;
-                length
-                    .checked_add(value.len())
+            let mut symbols = SymbolLookup::new(categorical.get_mapping());
+            let mut total = 6usize;
+            for_each_category(categorical, |category| {
+                let symbol_length = match category {
+                    Some(category) => symbols.resolve(category)?.len(),
+                    None => 0,
+                };
+                total = total
+                    .checked_add(symbol_length)
                     .and_then(|length| length.checked_add(1))
-                    .ok_or(XqdbError::OverLengthErr())
-            })
+                    .ok_or(XqdbError::OverLengthErr())?;
+                Ok(())
+            })?;
+            Ok(total)
         }
         _ => Err(XqdbError::NotSupportedSeriesTypeErr(data_type.clone())),
     }

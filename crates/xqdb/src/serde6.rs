@@ -1,5 +1,5 @@
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Timelike};
-use indexmap::IndexMap;
+use indexmap::{map::Entry, IndexMap};
 use polars::datatypes::{DataType as PolarsDataType, TimeUnit as PolarTimeUnit};
 use polars::prelude::{Categories, DataFrame};
 use polars::series::Series;
@@ -47,8 +47,9 @@ const K_TYPE_NAME: [&str; 20] = [
 use crate::{
     errors::XqdbError,
     types::{
-        try_own_str, validate_guid_series, validate_q_symbol, validate_q_time_series, QLambda,
-        QOperator, SymbolEncoding, K, K_TYPE_SIZE, MAX_VALUE_DEPTH,
+        for_each_category, try_own_str, validate_guid_series, validate_q_symbol,
+        validate_q_time_series, QLambda, QOperator, SymbolEncoding, SymbolLookup, K, K_TYPE_SIZE,
+        MAX_VALUE_DEPTH,
     },
 };
 
@@ -188,17 +189,67 @@ fn decode_wire_numbers<T: WireNumber>(bytes: &[u8], context: &str) -> Result<Vec
     Ok(values)
 }
 
+/// Reuses the flat nested-list payload as Arrow storage instead of keeping both byte and
+/// typed copies alive. Polars checks alignment and retains the original allocation layout;
+/// unaligned storage and big-endian targets use the fallible copying decoder.
+fn decode_owned_wire_numbers<T: WireNumber>(
+    bytes: Vec<u8>,
+    context: &str,
+) -> Result<Buffer<T>, XqdbError> {
+    #[cfg(target_endian = "little")]
+    {
+        match Buffer::from(bytes).try_transmute::<T>() {
+            Ok(values) => Ok(values),
+            Err(bytes) => decode_wire_numbers::<T>(&bytes, context).map(Buffer::from),
+        }
+    }
+    #[cfg(target_endian = "big")]
+    {
+        decode_wire_numbers::<T>(&bytes, context).map(Buffer::from)
+    }
+}
+
+fn write_wire_number<T: WireNumber>(output: &mut Vec<u8>, value: T) {
+    #[cfg(target_endian = "little")]
+    output.extend_from_slice(bytemuck::bytes_of(&value));
+    #[cfg(target_endian = "big")]
+    {
+        let mut raw = [0u8; 16];
+        let raw = &mut raw[..T::WIDTH];
+        raw.copy_from_slice(&bytemuck::bytes_of(&value)[..T::WIDTH]);
+        raw.reverse();
+        output.extend_from_slice(raw);
+    }
+}
+
 fn write_wire_numbers<T: WireNumber>(output: &mut Vec<u8>, values: &[T]) {
     #[cfg(target_endian = "little")]
     output.extend_from_slice(bytemuck::cast_slice(values));
     #[cfg(target_endian = "big")]
-    for value in values {
-        let mut raw = [0u8; 16];
-        let raw = &mut raw[..T::WIDTH];
-        raw.copy_from_slice(&bytemuck::bytes_of(value)[..T::WIDTH]);
-        raw.reverse();
-        output.extend_from_slice(raw);
+    for &value in values {
+        write_wire_number(output, value);
     }
+}
+
+fn write_wire_numbers_from_iter<T, I>(output: &mut Vec<u8>, values: I)
+where
+    T: WireNumber,
+    I: IntoIterator<Item = T>,
+{
+    for value in values {
+        write_wire_number(output, value);
+    }
+}
+
+fn try_write_wire_numbers_from_iter<T, I>(output: &mut Vec<u8>, values: I) -> Result<(), XqdbError>
+where
+    T: WireNumber,
+    I: IntoIterator<Item = Result<T, XqdbError>>,
+{
+    for value in values {
+        write_wire_number(output, value?);
+    }
+    Ok(())
 }
 
 /// Packs a bool iterator into an Arrow bitmap over a fallibly reserved byte buffer.
@@ -253,8 +304,10 @@ fn q_timestamp_nanoseconds(unix_nanoseconds: i64) -> Result<i64, XqdbError> {
         })
 }
 fn unix_timestamp_nanoseconds(q_nanoseconds: i64) -> Result<i64, XqdbError> {
-    if q_nanoseconds == i64::MAX {
-        return Ok(i64::MAX);
+    if q_nanoseconds == i64::MIN + 1 || q_nanoseconds == i64::MAX {
+        return Err(XqdbError::DeserializationErr(
+            "q timestamp infinity cannot be represented as a native timestamp".to_string(),
+        ));
     }
     q_nanoseconds.checked_add(NANOS_DIFF).ok_or_else(|| {
         XqdbError::DeserializationErr(
@@ -383,6 +436,151 @@ fn take_list_length(bytes: &[u8], pos: &mut usize, context: &str) -> Result<usiz
     *pos = end;
     usize::try_from(raw_length)
         .map_err(|_| XqdbError::DeserializationErr(format!("{context} length cannot be negative")))
+}
+
+fn check_symbol_list_consumed(payload: &[u8], cursor: usize) -> Result<(), XqdbError> {
+    if cursor == payload.len() {
+        Ok(())
+    } else {
+        Err(XqdbError::DeserializationErr(format!(
+            "q symbol list has {} trailing byte(s)",
+            payload.len() - cursor
+        )))
+    }
+}
+
+/// Hashes one already well-mixed word: a symbol of at most eight bytes packed little-endian.
+/// Symbols never contain NUL, so zero padding cannot collide with a shorter symbol.
+#[derive(Default)]
+struct WordHasher(u64);
+
+impl std::hash::Hasher for WordHasher {
+    fn finish(&self) -> u64 {
+        let mut hash = self.0.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+        hash ^= hash >> 32;
+        hash = hash.wrapping_mul(0xD6E8_FEB8_6659_FD93);
+        hash ^ (hash >> 32)
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.0 = (self.0 << 8) | u64::from(byte);
+        }
+    }
+
+    fn write_u64(&mut self, word: u64) {
+        self.0 = word;
+    }
+}
+
+/// Hashes byte-slice keys with one-shot XXH3, which stays cheap for the short strings q symbols
+/// are; the length prefix `[u8]`'s `Hash` impl writes is folded into the seed.
+#[derive(Default)]
+struct SymbolHasher(u64);
+
+impl std::hash::Hasher for SymbolHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        self.0 = xxhash_rust::xxh3::xxh3_64_with_seed(bytes, self.0);
+    }
+
+    fn write_usize(&mut self, length: usize) {
+        self.0 = length as u64;
+    }
+}
+
+/// Resolves symbol bytes to global category ids while decoding one column.
+///
+/// q symbol columns repeat few distinct values over many rows, so each distinct symbol enters the
+/// shared categorical mapping once and every later occurrence is resolved locally: consecutive
+/// repeats by comparison with the previous symbol, symbols of at most eight bytes through a
+/// word-keyed map, and longer ones through a byte-slice map. This replaces a concurrent-map
+/// lookup per row with a private one.
+struct SymbolInterner<'a> {
+    mapping: std::sync::Arc<polars::prelude::CategoricalMapping>,
+    last: Option<(&'a [u8], u32)>,
+    short: std::collections::HashMap<u64, u32, std::hash::BuildHasherDefault<WordHasher>>,
+    long: std::collections::HashMap<&'a [u8], u32, std::hash::BuildHasherDefault<SymbolHasher>>,
+}
+
+impl<'a> SymbolInterner<'a> {
+    fn new() -> Self {
+        Self {
+            mapping: Categories::global().mapping(),
+            last: None,
+            short: std::collections::HashMap::default(),
+            long: std::collections::HashMap::default(),
+        }
+    }
+
+    /// `symbol` must be valid UTF-8; callers validate the whole payload before scanning.
+    fn category(&mut self, symbol: &'a [u8]) -> Result<u32, XqdbError> {
+        if let Some((last, cat)) = self.last {
+            if last == symbol {
+                return Ok(cat);
+            }
+        }
+        let cat = if symbol.len() <= 8 {
+            let mut word = [0u8; 8];
+            word[..symbol.len()].copy_from_slice(symbol);
+            match self.short.entry(u64::from_le_bytes(word)) {
+                std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    *entry.insert(insert_global_category(&self.mapping, symbol)?)
+                }
+            }
+        } else {
+            match self.long.entry(symbol) {
+                std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    *entry.insert(insert_global_category(&self.mapping, symbol)?)
+                }
+            }
+        };
+        self.last = Some((symbol, cat));
+        Ok(cat)
+    }
+}
+
+fn insert_global_category(
+    mapping: &polars::prelude::CategoricalMapping,
+    symbol: &[u8],
+) -> Result<u32, XqdbError> {
+    // SAFETY: the symbol-list payload was validated as UTF-8 before it was split at NUL bytes,
+    // and NUL is a one-byte code point, so every split piece is valid UTF-8.
+    let symbol = unsafe { std::str::from_utf8_unchecked(symbol) };
+    mapping
+        .insert_cat(symbol)
+        .map_err(|error| XqdbError::DeserializationErr(error.to_string()))
+}
+
+/// Decodes a validated symbol-list payload straight into a global categorical column, skipping
+/// the intermediate string column and the per-row concurrent-map cast it needed.
+fn decode_symbol_column(payload: &[u8], length: usize, name: &str) -> Result<K, XqdbError> {
+    use polars::prelude::{Categorical32Type, CategoricalChunked, IntoSeries, UInt32Chunked};
+
+    let mut interner = SymbolInterner::new();
+    let mut categories = try_vec_with_capacity::<u32>(length, "q symbol-list categories")?;
+    let mut cursor = 0usize;
+    for _ in 0..length {
+        let terminator = memchr::memchr(0, &payload[cursor..]).ok_or_else(|| {
+            XqdbError::DeserializationErr("q symbol-list value is not NUL-terminated".to_string())
+        })?;
+        categories.push(interner.category(&payload[cursor..cursor + terminator])?);
+        cursor += terminator + 1;
+    }
+    check_symbol_list_consumed(payload, cursor)?;
+    let dtype = PolarsDataType::Categorical(Categories::global(), interner.mapping.clone());
+    let physical = UInt32Chunked::from_vec(name.into(), categories);
+    // SAFETY: every category id was returned by `dtype`'s own mapping, and the global categories
+    // use a u32 physical representation, which `cat32()` in the serializer already relies on.
+    let series = unsafe {
+        CategoricalChunked::<Categorical32Type>::from_cats_and_dtype_unchecked(physical, dtype)
+    };
+    Ok(K::Series(series.into_series()))
 }
 
 fn finite_f64_to_i64(value: f64, context: &str) -> Result<i64, XqdbError> {
@@ -552,12 +750,12 @@ fn deserialize_unchecked(
             // timestamp
             244 => {
                 let q_ns = i64::from_le_bytes(take_bytes::<8>(vec, pos, "q timestamp atom")?);
-                let ns = if q_ns <= i64::MIN + 1 {
-                    0
+                if q_ns == i64::MIN {
+                    Ok(K::Null)
                 } else {
-                    unix_timestamp_nanoseconds(q_ns)?
-                };
-                Ok(K::DateTime(DateTime::from_timestamp_nanos(ns)))
+                    let ns = unix_timestamp_nanoseconds(q_ns)?;
+                    Ok(K::DateTime(DateTime::from_timestamp_nanos(ns)))
+                }
             }
             // month
             243 => {
@@ -595,9 +793,18 @@ fn deserialize_unchecked(
             // datetime
             241 => {
                 let unit = f64::from_le_bytes(take_bytes::<8>(vec, pos, "q datetime atom")?);
-                Ok(K::DateTime(DateTime::from_timestamp_nanos(
-                    q_datetime_nanoseconds(unit)?,
-                )))
+                if unit.is_nan() {
+                    Ok(K::Null)
+                } else if !unit.is_finite() {
+                    Err(XqdbError::DeserializationErr(
+                        "q datetime infinity cannot be represented as a native timestamp"
+                            .to_string(),
+                    ))
+                } else {
+                    Ok(K::DateTime(DateTime::from_timestamp_nanos(
+                        q_datetime_nanoseconds(unit)?,
+                    )))
+                }
             }
             // timespan
             240 => {
@@ -760,7 +967,18 @@ fn deserialize_unchecked(
                     ))
                 })?;
                 for (key, value) in keys.zip(values) {
-                    dict.insert(try_own_str(key.unwrap_or(""), "q dictionary key")?, value);
+                    let key = try_own_str(key.unwrap_or(""), "q dictionary key")?;
+                    match dict.entry(key) {
+                        Entry::Vacant(entry) => {
+                            entry.insert(value);
+                        }
+                        Entry::Occupied(entry) => {
+                            return Err(XqdbError::DeserializationErr(format!(
+                                "duplicate symbol dictionary key {:?}; use lossless value mode to preserve duplicate entries",
+                                entry.key()
+                            )))
+                        }
+                    }
                 }
                 Ok(K::Dict(dict))
             } else {
@@ -892,105 +1110,233 @@ fn create_field(k_type: u8, name: &str) -> Result<Field, XqdbError> {
 }
 
 fn calculate_array_end_index(vec: &[u8], start_pos: usize, k_type: u8) -> Result<usize, XqdbError> {
-    let mut pos = start_pos;
-
-    match k_type {
-        0 => {
-            let length = take_list_length(vec, &mut pos, "q general list")?;
-            if length == 0 {
-                return Ok(pos);
-            }
-            let sub_k_type = *vec.get(pos).ok_or_else(|| {
-                XqdbError::DeserializationErr(
-                    "q nested list omitted its first element type".to_string(),
-                )
-            })?;
-            if !matches!(sub_k_type, 1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12) {
-                return Err(XqdbError::NotSupportedKNestedListErr(sub_k_type));
-            }
-
-            for _ in 0..length {
-                let current_k_type = *vec.get(pos).ok_or_else(|| {
-                    XqdbError::DeserializationErr(
-                        "q nested list omitted an element type".to_string(),
-                    )
-                })?;
-                if current_k_type != sub_k_type && current_k_type != 0 {
-                    return Err(XqdbError::NotSupportedKMixedListErr(
-                        sub_k_type,
-                        current_k_type,
-                    ));
-                }
-                pos += 1;
-                let sub_length = take_list_length(vec, &mut pos, "q nested-list element")?;
-                if current_k_type == 0 {
-                    if sub_length != 0 {
-                        return Err(XqdbError::NotSupportedKMixedListErr(
-                            sub_k_type,
-                            current_k_type,
-                        ));
-                    }
-                    continue;
-                }
-
-                if current_k_type == 11 {
-                    for _ in 0..sub_length {
-                        take_until_nul(vec, &mut pos, "q nested symbol")?;
-                    }
-                } else {
-                    let payload_length = sub_length
-                        .checked_mul(K_TYPE_SIZE[current_k_type as usize])
-                        .ok_or_else(|| {
-                            XqdbError::DeserializationErr(
-                                "q nested-list payload length overflowed".to_string(),
-                            )
-                        })?;
-                    let end = pos.checked_add(payload_length).ok_or_else(|| {
-                        XqdbError::DeserializationErr(
-                            "q nested-list payload offset overflowed".to_string(),
-                        )
-                    })?;
-                    vec.get(pos..end).ok_or_else(|| {
-                        XqdbError::DeserializationErr(format!(
-                            "q nested-list payload length {payload_length} exceeds the available bytes"
-                        ))
-                    })?;
-                    pos = end;
-                }
-            }
-            Ok(pos)
-        }
-        11 => {
-            let length = take_list_length(vec, &mut pos, "q symbol list")?;
-            for _ in 0..length {
-                take_until_nul(vec, &mut pos, "q symbol-list value")?;
-            }
-            Ok(pos)
-        }
-        1..=19 if K_TYPE_SIZE[k_type as usize] > 0 => {
-            let length = take_list_length(vec, &mut pos, "q typed list")?;
-            let payload_length = length
-                .checked_mul(K_TYPE_SIZE[k_type as usize])
-                .ok_or_else(|| {
-                    XqdbError::DeserializationErr(
-                        "q typed-list payload length overflowed".to_string(),
-                    )
-                })?;
-            let end = pos.checked_add(payload_length).ok_or_else(|| {
-                XqdbError::DeserializationErr("q typed-list payload offset overflowed".to_string())
-            })?;
-            vec.get(pos..end).ok_or_else(|| {
-                XqdbError::DeserializationErr(format!(
-                    "q typed-list payload length {payload_length} exceeds the available bytes"
-                ))
-            })?;
-            Ok(end)
-        }
-        _ => Err(XqdbError::NotSupportedKListErr(k_type)),
+    match ListScan::new(k_type, start_pos)?.advance(vec, vec.len())? {
+        ScanOutcome::Complete(end) => Ok(end),
+        ScanOutcome::Incomplete => Err(XqdbError::DeserializationErr(
+            "q list ends before its declared length".to_string(),
+        )),
     }
 }
 
-fn deserialize_series(
+/// Result of scanning a list for its end within the bytes that have arrived.
+pub(crate) enum ScanOutcome {
+    Complete(usize),
+    Incomplete,
+}
+
+/// Resumable scan for the end of one q list payload, starting at its attribute byte.
+///
+/// The scan only ever looks at `received`, the prefix of the body delivered so far, and reports
+/// `Incomplete` instead of an error when the list continues beyond it, so a table can be walked
+/// column by column while the rest of the frame is still in flight. `total` is the full body
+/// length, which turns a list that overruns it into an error straight away.
+pub(crate) struct ListScan {
+    k_type: u8,
+    pos: usize,
+    rows_left: Option<usize>,
+    child_type: Option<u8>,
+    child_symbols_left: usize,
+}
+
+impl ListScan {
+    pub(crate) fn new(k_type: u8, start_pos: usize) -> Result<Self, XqdbError> {
+        let fixed_width = (1..=19).contains(&k_type) && K_TYPE_SIZE[k_type as usize] > 0;
+        if !(k_type == 0 || k_type == 11 || fixed_width) {
+            return Err(XqdbError::NotSupportedKListErr(k_type));
+        }
+        Ok(Self {
+            k_type,
+            pos: start_pos,
+            rows_left: None,
+            child_type: None,
+            child_symbols_left: 0,
+        })
+    }
+
+    pub(crate) fn advance(
+        &mut self,
+        received: &[u8],
+        total: usize,
+    ) -> Result<ScanOutcome, XqdbError> {
+        if self.rows_left.is_none() {
+            let header_end = self.pos.saturating_add(5);
+            if header_end > received.len() {
+                return incomplete_or_overrun(header_end, total);
+            }
+            let rows = take_list_length(received, &mut self.pos, "q list")?;
+            if self.k_type == 0 || self.k_type == 11 {
+                self.rows_left = Some(rows);
+            } else {
+                let payload_length = rows
+                    .checked_mul(K_TYPE_SIZE[self.k_type as usize])
+                    .ok_or_else(|| {
+                        XqdbError::DeserializationErr(
+                            "q typed-list payload length overflowed".to_string(),
+                        )
+                    })?;
+                self.pos = self.pos.checked_add(payload_length).ok_or_else(|| {
+                    XqdbError::DeserializationErr(
+                        "q typed-list payload offset overflowed".to_string(),
+                    )
+                })?;
+                if self.pos > total {
+                    return Err(XqdbError::DeserializationErr(format!(
+                        "q typed-list payload length {payload_length} exceeds the available bytes"
+                    )));
+                }
+                self.rows_left = Some(0);
+            }
+        }
+        match self.k_type {
+            11 => {
+                let mut rows_left = self.rows_left.unwrap_or(0);
+                let outcome = scan_symbols(
+                    received,
+                    total,
+                    &mut self.pos,
+                    &mut rows_left,
+                    "q symbol-list value",
+                )?;
+                self.rows_left = Some(rows_left);
+                Ok(outcome)
+            }
+            0 => self.advance_nested(received, total),
+            _ => Ok(if self.pos <= received.len() {
+                ScanOutcome::Complete(self.pos)
+            } else {
+                ScanOutcome::Incomplete
+            }),
+        }
+    }
+
+    fn advance_nested(&mut self, received: &[u8], total: usize) -> Result<ScanOutcome, XqdbError> {
+        let mut rows_left = self.rows_left.unwrap_or(0);
+        while rows_left > 0 {
+            if self.child_symbols_left > 0 {
+                let outcome = scan_symbols(
+                    received,
+                    total,
+                    &mut self.pos,
+                    &mut self.child_symbols_left,
+                    "q nested symbol",
+                )?;
+                if matches!(outcome, ScanOutcome::Incomplete) {
+                    self.rows_left = Some(rows_left);
+                    return Ok(ScanOutcome::Incomplete);
+                }
+                rows_left -= 1;
+                continue;
+            }
+            let header_end = self.pos.saturating_add(6);
+            if header_end > received.len() {
+                self.rows_left = Some(rows_left);
+                return incomplete_or_overrun(header_end, total);
+            }
+            let current_k_type = received[self.pos];
+            let child_type = match self.child_type {
+                Some(child_type) => child_type,
+                None => {
+                    if !matches!(current_k_type, 1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12) {
+                        return Err(XqdbError::NotSupportedKNestedListErr(current_k_type));
+                    }
+                    self.child_type = Some(current_k_type);
+                    current_k_type
+                }
+            };
+            if current_k_type != child_type && current_k_type != 0 {
+                return Err(XqdbError::NotSupportedKMixedListErr(
+                    child_type,
+                    current_k_type,
+                ));
+            }
+            self.pos += 1;
+            let sub_length = take_list_length(received, &mut self.pos, "q nested-list element")?;
+            if current_k_type == 0 {
+                if sub_length != 0 {
+                    return Err(XqdbError::NotSupportedKMixedListErr(
+                        child_type,
+                        current_k_type,
+                    ));
+                }
+                rows_left -= 1;
+                continue;
+            }
+            if current_k_type == 11 {
+                if sub_length == 0 {
+                    rows_left -= 1;
+                } else {
+                    self.child_symbols_left = sub_length;
+                }
+                continue;
+            }
+            let payload_length = sub_length
+                .checked_mul(K_TYPE_SIZE[current_k_type as usize])
+                .ok_or_else(|| {
+                    XqdbError::DeserializationErr(
+                        "q nested-list payload length overflowed".to_string(),
+                    )
+                })?;
+            let end = self.pos.checked_add(payload_length).ok_or_else(|| {
+                XqdbError::DeserializationErr("q nested-list payload offset overflowed".to_string())
+            })?;
+            if end > total {
+                return Err(XqdbError::DeserializationErr(format!(
+                    "q nested-list payload length {payload_length} exceeds the available bytes"
+                )));
+            }
+            self.pos = end;
+            rows_left -= 1;
+            if end > received.len() {
+                self.rows_left = Some(rows_left);
+                return Ok(ScanOutcome::Incomplete);
+            }
+        }
+        self.rows_left = Some(0);
+        Ok(if self.pos <= received.len() {
+            ScanOutcome::Complete(self.pos)
+        } else {
+            ScanOutcome::Incomplete
+        })
+    }
+}
+
+/// Advances `pos` past `rows_left` NUL-terminated symbols, counting each one off, and stops with
+/// `Incomplete` when the next terminator has not arrived yet.
+fn scan_symbols(
+    received: &[u8],
+    total: usize,
+    pos: &mut usize,
+    rows_left: &mut usize,
+    context: &str,
+) -> Result<ScanOutcome, XqdbError> {
+    while *rows_left > 0 {
+        match memchr::memchr(0, &received[*pos..]) {
+            Some(terminator) => {
+                *pos += terminator + 1;
+                *rows_left -= 1;
+            }
+            None if received.len() < total => return Ok(ScanOutcome::Incomplete),
+            None => {
+                return Err(XqdbError::DeserializationErr(format!(
+                    "{context} is not NUL-terminated"
+                )))
+            }
+        }
+    }
+    Ok(ScanOutcome::Complete(*pos))
+}
+
+fn incomplete_or_overrun(needed: usize, total: usize) -> Result<ScanOutcome, XqdbError> {
+    if needed > total {
+        Err(XqdbError::DeserializationErr(
+            "q list header extends beyond its frame".to_string(),
+        ))
+    } else {
+        Ok(ScanOutcome::Incomplete)
+    }
+}
+
+pub(crate) fn deserialize_series(
     vec: &[u8],
     k_type: u8,
     as_column: bool,
@@ -1034,7 +1380,7 @@ fn deserialize_series(
     }
 
     let array_box: Box<dyn Array>;
-    let mut series: Series;
+    let series: Series;
     match k_type {
         0 => deserialize_nested_array(vec, encoding),
         1 => {
@@ -1188,6 +1534,9 @@ fn deserialize_series(
             // subsequences, so every terminator survives into the transcoded bytes.
             let text = decode_utf8(array_vec, encoding, "q symbol-list value")?;
             let array_vec = text.as_bytes();
+            if as_column {
+                return decode_symbol_column(array_vec, length, name);
+            }
             let mut values = try_vec_with_capacity::<u8>(
                 array_vec.len().saturating_sub(length),
                 "q symbol-list values",
@@ -1207,12 +1556,7 @@ fn deserialize_series(
                 })?);
                 cursor += terminator + 1;
             }
-            if cursor != array_vec.len() {
-                return Err(XqdbError::DeserializationErr(format!(
-                    "q symbol list has {} trailing byte(s)",
-                    array_vec.len() - cursor
-                )));
-            }
+            check_symbol_list_consumed(array_vec, cursor)?;
             // SAFETY: offsets start at zero and only ever grow by the pushed slice lengths,
             // so they are monotonically non-decreasing and bounded by values.len().
             let offsets = unsafe { OffsetsBuffer::new_unchecked(Buffer::from(offsets)) };
@@ -1225,14 +1569,6 @@ fn deserialize_series(
             .boxed();
             series = Series::from_arrow(name.into(), array_box)
                 .map_err(|error| XqdbError::DeserializationErr(error.to_string()))?;
-            if as_column {
-                series = series
-                    .cast(&PolarsDataType::Categorical(
-                        Categories::global(),
-                        Categories::global().mapping(),
-                    ))
-                    .map_err(|error| XqdbError::DeserializationErr(error.to_string()))?;
-            }
             Ok(K::Series(series))
         }
         12 => {
@@ -1280,10 +1616,11 @@ fn deserialize_series(
             let values = q_values.into_iter().map(|value| {
                 if value.is_nan() {
                     Ok(i64::MIN)
-                } else if value == f64::INFINITY {
-                    Ok(i64::MAX)
-                } else if value == f64::NEG_INFINITY {
-                    Ok(i64::MIN + 1)
+                } else if !value.is_finite() {
+                    Err(XqdbError::DeserializationErr(
+                        "q datetime infinity cannot be represented as a native timestamp"
+                            .to_string(),
+                    ))
                 } else {
                     let q_milliseconds =
                         finite_f64_to_i64((value * MS_PER_DAY).round(), "finite q datetime")?;
@@ -1439,6 +1776,75 @@ fn transcode_nested_char_lossy(
     Ok((transcoded, offsets))
 }
 
+/// Decodes a nested char list into a string-view column in one pass over the rows, validating
+/// each row's UTF-8 as it is copied so no offsets or second boundary pass are needed. Returns
+/// `None` on the first row that is not valid UTF-8, leaving the strict error or lossy transcoding
+/// to the general decoder.
+fn decode_char_rows(
+    vec: &[u8],
+    mut pos: usize,
+    length: usize,
+    payload_capacity: usize,
+) -> Result<Option<Utf8ViewArray>, XqdbError> {
+    let mut views = try_vec_with_capacity::<View>(length, "q nested char views")?;
+    let mut values = try_vec_with_capacity::<u8>(payload_capacity, "q nested-list values")?;
+    for _ in 0..length {
+        let current_k_type = *vec.get(pos).ok_or_else(|| {
+            XqdbError::DeserializationErr("q nested list omitted an element type".to_string())
+        })?;
+        pos += 1;
+        let sub_length = take_list_length(vec, &mut pos, "q nested-list element")?;
+        let payload: &[u8] = match current_k_type {
+            0 if sub_length == 0 => &[],
+            10 => {
+                let end = pos.checked_add(sub_length).ok_or_else(|| {
+                    XqdbError::DeserializationErr(
+                        "q nested-list payload offset overflowed".to_string(),
+                    )
+                })?;
+                let payload = vec.get(pos..end).ok_or_else(|| {
+                    XqdbError::DeserializationErr(format!(
+                        "q nested-list payload length {sub_length} exceeds the available bytes"
+                    ))
+                })?;
+                pos = end;
+                payload
+            }
+            _ => return Err(XqdbError::NotSupportedKMixedListErr(10, current_k_type)),
+        };
+        if !payload.is_ascii() && std::str::from_utf8(payload).is_err() {
+            return Ok(None);
+        }
+        let offset = u32::try_from(values.len()).map_err(|_| {
+            XqdbError::DeserializationErr(
+                "q nested char values exceed the view buffer limit".to_string(),
+            )
+        })?;
+        views.push(View::new_from_bytes(payload, 0, offset));
+        try_extend(&mut values, payload, "q nested-list values")?;
+    }
+    if pos != vec.len() {
+        return Err(XqdbError::DeserializationErr(format!(
+            "q nested list has {} trailing byte(s)",
+            vec.len() - pos
+        )));
+    }
+    let total_bytes_len = values.len();
+    // SAFETY: every view points into the single data buffer registered below at the offset the
+    // row's bytes were appended, and every row was validated as UTF-8 on its own.
+    let array = unsafe {
+        Utf8ViewArray::new_unchecked(
+            ArrowDataType::Utf8View,
+            views.into(),
+            Buffer::from(vec![Buffer::from(values)]),
+            None,
+            Some(total_bytes_len),
+            total_bytes_len,
+        )
+    };
+    Ok(Some(array))
+}
+
 fn deserialize_nested_array(vec: &[u8], encoding: SymbolEncoding) -> Result<K, XqdbError> {
     let mut pos = 0;
     let length = take_list_length(vec, &mut pos, "q nested list")?;
@@ -1459,9 +1865,31 @@ fn deserialize_nested_array(vec: &[u8], encoding: SymbolEncoding) -> Result<K, X
         return Err(XqdbError::NotSupportedKNestedListErr(k_type));
     }
     let name = K_TYPE_NAME[k_type as usize];
+    // Every child has a six-byte list header, including empty mixed-list children.
+    // Fixed-width payloads can therefore reserve exactly, without geometric slack that
+    // would remain retained when the allocation becomes the final Arrow buffer.
+    let payload_capacity = if k_type == 11 {
+        0
+    } else {
+        length
+            .checked_mul(6)
+            .and_then(|headers| (vec.len() - pos).checked_sub(headers))
+            .ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "q nested list is too short for its child headers".to_string(),
+                )
+            })?
+    };
+    if k_type == 10 {
+        if let Some(array) = decode_char_rows(vec, pos, length, payload_capacity)? {
+            return Series::from_arrow(name.into(), array.boxed())
+                .map(K::Series)
+                .map_err(|error| XqdbError::DeserializationErr(error.to_string()));
+        }
+    }
     let mut offsets = try_vec_with_capacity::<i32>(length + 1, "q nested-list offsets")?;
     offsets.push(0i32);
-    let mut values = Vec::new();
+    let mut values = try_vec_with_capacity::<u8>(payload_capacity, "q nested-list values")?;
     let mut symbol_offsets = if k_type == 11 { Some(vec![0i64]) } else { None };
 
     for _ in 0..length {
@@ -1553,54 +1981,44 @@ fn deserialize_nested_array(vec: &[u8], encoding: SymbolEncoding) -> Result<K, X
         }
         4 => UInt8Array::from_vec(values).boxed(),
         5 => {
-            let decoded = decode_wire_numbers::<i16>(&values, "q nested short list")?;
+            let decoded = decode_owned_wire_numbers::<i16>(values, "q nested short list")?;
             let validity = optional_validity(
                 decoded.iter().map(|value| *value != i16::MIN),
                 "q nested short list validity",
             )?;
-            let mut array = Int16Array::from_vec(decoded);
-            array.set_validity(validity);
-            array.boxed()
+            Int16Array::new(ArrowDataType::Int16, decoded, validity).boxed()
         }
         6 => {
-            let decoded = decode_wire_numbers::<i32>(&values, "q nested int list")?;
+            let decoded = decode_owned_wire_numbers::<i32>(values, "q nested int list")?;
             let validity = optional_validity(
                 decoded.iter().map(|value| *value != i32::MIN),
                 "q nested int list validity",
             )?;
-            let mut array = Int32Array::from_vec(decoded);
-            array.set_validity(validity);
-            array.boxed()
+            Int32Array::new(ArrowDataType::Int32, decoded, validity).boxed()
         }
         7 => {
-            let decoded = decode_wire_numbers::<i64>(&values, "q nested long list")?;
+            let decoded = decode_owned_wire_numbers::<i64>(values, "q nested long list")?;
             let validity = optional_validity(
                 decoded.iter().map(|value| *value != i64::MIN),
                 "q nested long list validity",
             )?;
-            let mut array = Int64Array::from_vec(decoded);
-            array.set_validity(validity);
-            array.boxed()
+            Int64Array::new(ArrowDataType::Int64, decoded, validity).boxed()
         }
         8 => {
-            let decoded = decode_wire_numbers::<f32>(&values, "q nested real list")?;
+            let decoded = decode_owned_wire_numbers::<f32>(values, "q nested real list")?;
             let validity = optional_validity(
                 decoded.iter().map(|value| !value.is_nan()),
                 "q nested real list validity",
             )?;
-            let mut array = Float32Array::from_vec(decoded);
-            array.set_validity(validity);
-            array.boxed()
+            Float32Array::new(ArrowDataType::Float32, decoded, validity).boxed()
         }
         9 => {
-            let decoded = decode_wire_numbers::<f64>(&values, "q nested float list")?;
+            let decoded = decode_owned_wire_numbers::<f64>(values, "q nested float list")?;
             let validity = optional_validity(
                 decoded.iter().map(|value| !value.is_nan()),
                 "q nested float list validity",
             )?;
-            let mut array = Float64Array::from_vec(decoded);
-            array.set_validity(validity);
-            array.boxed()
+            Float64Array::new(ArrowDataType::Float64, decoded, validity).boxed()
         }
         10 => {
             let boundaries = outer_offsets.as_ref();
@@ -1648,8 +2066,11 @@ fn deserialize_nested_array(vec: &[u8], encoding: SymbolEncoding) -> Result<K, X
             .boxed()
         }
         12 => {
-            let mut decoded = decode_wire_numbers::<i64>(&values, "q nested timestamp list")?;
-            for value in decoded.iter_mut() {
+            let mut decoded = decode_owned_wire_numbers::<i64>(values, "q nested timestamp list")?;
+            for value in decoded
+                .get_mut_slice()
+                .expect("decoded values exclusively own their storage")
+            {
                 if *value != i64::MIN {
                     *value = unix_timestamp_nanoseconds(*value)?;
                 }
@@ -1660,7 +2081,7 @@ fn deserialize_nested_array(vec: &[u8], encoding: SymbolEncoding) -> Result<K, X
             )?;
             PrimitiveArray::new(
                 ArrowDataType::Timestamp(TimeUnit::Nanosecond, None),
-                decoded.into(),
+                decoded,
                 validity,
             )
             .boxed()
@@ -1706,11 +2127,7 @@ pub fn decompress(vec: &[u8], de_vec: &mut [u8], start_pos: usize) -> Result<(),
                     )
                 })?
                 .try_into()
-                .map_err(|_| {
-                    XqdbError::DeserializationErr(
-                        "invalid 4-byte compressed-data length prefix".to_string(),
-                    )
-                })?;
+                .expect("four-byte compressed-data length prefix");
             u64::from(u32::from_le_bytes(prefix))
         }
         8 => {
@@ -1722,11 +2139,7 @@ pub fn decompress(vec: &[u8], de_vec: &mut [u8], start_pos: usize) -> Result<(),
                     )
                 })?
                 .try_into()
-                .map_err(|_| {
-                    XqdbError::DeserializationErr(
-                        "invalid 8-byte compressed-data length prefix".to_string(),
-                    )
-                })?;
+                .expect("eight-byte compressed-data length prefix");
             u64::from_le_bytes(prefix)
         }
         _ => {
@@ -1749,72 +2162,143 @@ pub fn decompress(vec: &[u8], de_vec: &mut [u8], start_pos: usize) -> Result<(),
             de_vec.len()
         )));
     }
-    if !de_vec.is_empty() && vec.len() <= start_pos {
-        return Err(XqdbError::DeserializationErr(
-            "compressed data ends immediately after its length prefix".to_string(),
-        ));
-    }
 
-    match catch_unwind(AssertUnwindSafe(|| {
-        decompress_unchecked(vec, de_vec, start_pos)
-    })) {
-        Ok(()) => Ok(()),
-        Err(_) => Err(XqdbError::DeserializationErr(
-            "malformed compressed data caused an internal decompressor panic".to_string(),
-        )),
-    }
-}
+    const INVALID_OFFSET: usize = usize::MAX;
+    let mut dictionary = [INVALID_OFFSET; 256];
+    let mut compressed_position = start_pos;
+    let mut output_position = 0usize;
+    // The reference KX decoder hashes from byte zero of the uncompressed value body. Using an
+    // invalid sentinel rather than zero keeps that first offset representable.
+    let mut hash_position = 0usize;
+    let mut flags = 0u8;
+    let mut mask = 0u8;
 
-fn decompress_unchecked(vec: &[u8], de_vec: &mut [u8], start_pos: usize) {
-    let mut d_pos: usize = 0;
-    // skip decompressed msg length
-    let mut x_pos: usize = 4;
-    let mut c_pos: usize = start_pos;
-    let mut x = [0usize; 256];
-    let mut n: u8 = 0;
-
-    let mut i: u8 = 0;
-    while d_pos < de_vec.len() {
-        if i == 0 {
-            n = vec[c_pos];
-            c_pos += 1;
-            i = 1;
+    while output_position < de_vec.len() {
+        if mask == 0 {
+            flags = take_compressed_byte(vec, &mut compressed_position, "compression flags")?;
+            mask = 1;
         }
-        let mut r: usize = 0;
-        if n & i != 0 {
-            let s = x[vec[c_pos] as usize];
-            c_pos += 1;
-            r = vec[c_pos] as usize;
-            c_pos += 1;
-            if s + r + 2 <= d_pos {
-                // The match lies entirely behind the write cursor: one memmove.
-                de_vec.copy_within(s..s + r + 2, d_pos);
+        let is_backreference = flags & mask != 0;
+        let previous_output_position = output_position;
+
+        if is_backreference {
+            let hash = take_compressed_byte(
+                vec,
+                &mut compressed_position,
+                "compression backreference hash",
+            )?;
+            let extra_length = usize::from(take_compressed_byte(
+                vec,
+                &mut compressed_position,
+                "compression backreference length",
+            )?);
+            let source = dictionary[usize::from(hash)];
+            if source == INVALID_OFFSET {
+                return Err(XqdbError::DeserializationErr(format!(
+                    "compression backreference hash {hash} has not been initialized"
+                )));
+            }
+            let source_pair_end = source.checked_add(2).ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "compression backreference source span overflowed".to_string(),
+                )
+            })?;
+            if source_pair_end > output_position {
+                return Err(XqdbError::DeserializationErr(format!(
+                    "compression backreference source {source} is not fully initialized at output offset {output_position}"
+                )));
+            }
+            let run_length = extra_length + 2;
+            let output_end = output_position.checked_add(run_length).ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "compression backreference output span overflowed".to_string(),
+                )
+            })?;
+            if output_end > de_vec.len() {
+                return Err(XqdbError::DeserializationErr(format!(
+                    "compression backreference writes through offset {output_end}, beyond the {}-byte output",
+                    de_vec.len()
+                )));
+            }
+            let source_end = source.checked_add(run_length).ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "compression backreference source span overflowed".to_string(),
+                )
+            })?;
+            if source_end > de_vec.len() {
+                return Err(XqdbError::DeserializationErr(format!(
+                    "compression backreference reads through offset {source_end}, beyond the {}-byte output",
+                    de_vec.len()
+                )));
+            }
+
+            if source_end <= output_position {
+                de_vec.copy_within(source..source_end, output_position);
             } else {
-                // Self-referencing run: must copy byte-serially so freshly written
-                // bytes feed later iterations.
-                for j in 0..r + 2 {
-                    de_vec[d_pos + j] = de_vec[s + j]
+                for index in 0..run_length {
+                    de_vec[output_position + index] = de_vec[source + index];
                 }
             }
-            d_pos += 2;
+            output_position = output_end;
         } else {
-            de_vec[d_pos] = vec[c_pos];
-            d_pos += 1;
-            c_pos += 1;
+            de_vec[output_position] =
+                take_compressed_byte(vec, &mut compressed_position, "compressed literal")?;
+            output_position += 1;
         }
 
-        for i in x_pos..d_pos - 1 {
-            x[(de_vec[i] ^ de_vec[i + 1]) as usize] = i
+        // Match the KX reference update order: a backreference contributes its first pair to the
+        // dictionary, then skips hashing the rest of its copied run.
+        let hash_end = if is_backreference {
+            previous_output_position.checked_add(1).ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "compression dictionary position overflowed".to_string(),
+                )
+            })?
+        } else {
+            output_position.saturating_sub(1)
+        };
+        for position in hash_position..hash_end {
+            let next = position.checked_add(1).ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "compression dictionary source position overflowed".to_string(),
+                )
+            })?;
+            let pair = de_vec.get(position..=next).ok_or_else(|| {
+                XqdbError::DeserializationErr(
+                    "compression dictionary source pair exceeds the output".to_string(),
+                )
+            })?;
+            dictionary[usize::from(pair[0] ^ pair[1])] = position;
         }
-
-        x_pos = d_pos - 1;
-
-        if n & i != 0 {
-            d_pos += r;
-            x_pos = d_pos;
-        }
-        i <<= 1
+        hash_position = if is_backreference {
+            output_position
+        } else {
+            output_position.saturating_sub(1)
+        };
+        mask <<= 1;
     }
+
+    if compressed_position != vec.len() {
+        return Err(XqdbError::DeserializationErr(format!(
+            "compressed data has {} trailing byte(s)",
+            vec.len() - compressed_position
+        )));
+    }
+    Ok(())
+}
+
+fn take_compressed_byte(
+    bytes: &[u8],
+    position: &mut usize,
+    context: &str,
+) -> Result<u8, XqdbError> {
+    let value = *bytes.get(*position).ok_or_else(|| {
+        XqdbError::DeserializationErr(format!("compressed data ends before its {context} byte"))
+    })?;
+    *position = position.checked_add(1).ok_or_else(|| {
+        XqdbError::DeserializationErr("compressed-data position overflowed".to_string())
+    })?;
+    Ok(value)
 }
 
 /// Writes the decompressed-length prefix that follows a compressed frame's 8-byte header and
@@ -2046,6 +2530,9 @@ pub(crate) fn serialize_into(k: &K, vec: &mut Vec<u8>) -> Result<(), XqdbError> 
                 serialize_series_into(column.as_materialized_series(), vec)?;
             }
         }
+        K::QValue(value) => {
+            vec.extend_from_slice(value.as_bytes());
+        }
         K::Operator(operator) => {
             let (k_type, opcode) = operator.wire_value();
             vec.extend_from_slice(&[k_type, opcode]);
@@ -2084,12 +2571,18 @@ pub(crate) fn serialize_into(k: &K, vec: &mut Vec<u8>) -> Result<(), XqdbError> 
     Ok(())
 }
 
-fn write_nested_wire_lists<T: WireNumber>(
+fn write_nested_wire_lists<T>(
     output: &mut Vec<u8>,
-    values: &[T],
+    values: &PrimitiveArray<T>,
     offsets: &[i64],
     k_type: u8,
-) -> Result<(), XqdbError> {
+    null_value: T,
+) -> Result<(), XqdbError>
+where
+    T: WireNumber + polars_arrow::types::NativeType,
+{
+    let raw_values: &[T] = values.values().as_ref();
+    let has_nulls = values.null_count() > 0;
     for range in offsets.windows(2) {
         let start = usize::try_from(range[0]).map_err(|_| {
             XqdbError::NotAbleToSerializeErr("nested-list offsets cannot be negative".to_string())
@@ -2097,14 +2590,27 @@ fn write_nested_wire_lists<T: WireNumber>(
         let end = usize::try_from(range[1]).map_err(|_| {
             XqdbError::NotAbleToSerializeErr("nested-list offsets cannot be negative".to_string())
         })?;
-        let nested_values = values.get(start..end).ok_or_else(|| {
+        let nested_values = raw_values.get(start..end).ok_or_else(|| {
             XqdbError::NotAbleToSerializeErr(
                 "nested-list offsets exceed the child values".to_string(),
             )
         })?;
         output.extend_from_slice(&[k_type, 0]);
         output.extend_from_slice(&q_list_length(nested_values.len())?);
-        write_wire_numbers(output, nested_values);
+        if has_nulls {
+            write_wire_numbers_from_iter(
+                output,
+                nested_values.iter().enumerate().map(|(offset, &value)| {
+                    if values.is_null(start + offset) {
+                        null_value
+                    } else {
+                        value
+                    }
+                }),
+            );
+        } else {
+            write_wire_numbers(output, nested_values);
+        }
     }
     Ok(())
 }
@@ -2156,13 +2662,10 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             match values.cont_slice() {
                 Ok(values) => write_wire_numbers(vec, values),
-                Err(_) => {
-                    let values = values
-                        .iter()
-                        .map(|value| value.unwrap_or(i16::MIN))
-                        .collect::<Vec<_>>();
-                    write_wire_numbers(vec, &values);
-                }
+                Err(_) => write_wire_numbers_from_iter(
+                    vec,
+                    values.iter().map(|value| value.unwrap_or(i16::MIN)),
+                ),
             }
         }
         PolarsDataType::Int32 => {
@@ -2173,13 +2676,10 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             match values.cont_slice() {
                 Ok(values) => write_wire_numbers(vec, values),
-                Err(_) => {
-                    let values = values
-                        .iter()
-                        .map(|value| value.unwrap_or(i32::MIN))
-                        .collect::<Vec<_>>();
-                    write_wire_numbers(vec, &values);
-                }
+                Err(_) => write_wire_numbers_from_iter(
+                    vec,
+                    values.iter().map(|value| value.unwrap_or(i32::MIN)),
+                ),
             }
         }
         PolarsDataType::Int64 => {
@@ -2190,13 +2690,10 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             match values.cont_slice() {
                 Ok(values) => write_wire_numbers(vec, values),
-                Err(_) => {
-                    let values = values
-                        .iter()
-                        .map(|value| value.unwrap_or(i64::MIN))
-                        .collect::<Vec<_>>();
-                    write_wire_numbers(vec, &values);
-                }
+                Err(_) => write_wire_numbers_from_iter(
+                    vec,
+                    values.iter().map(|value| value.unwrap_or(i64::MIN)),
+                ),
             }
         }
         PolarsDataType::Float32 => {
@@ -2207,13 +2704,10 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             match values.cont_slice() {
                 Ok(values) => write_wire_numbers(vec, values),
-                Err(_) => {
-                    let values = values
-                        .iter()
-                        .map(|value| value.unwrap_or(f32::NAN))
-                        .collect::<Vec<_>>();
-                    write_wire_numbers(vec, &values);
-                }
+                Err(_) => write_wire_numbers_from_iter(
+                    vec,
+                    values.iter().map(|value| value.unwrap_or(f32::NAN)),
+                ),
             }
         }
         PolarsDataType::Float64 => {
@@ -2224,13 +2718,10 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             match values.cont_slice() {
                 Ok(values) => write_wire_numbers(vec, values),
-                Err(_) => {
-                    let values = values
-                        .iter()
-                        .map(|value| value.unwrap_or(f64::NAN))
-                        .collect::<Vec<_>>();
-                    write_wire_numbers(vec, &values);
-                }
+                Err(_) => write_wire_numbers_from_iter(
+                    vec,
+                    values.iter().map(|value| value.unwrap_or(f64::NAN)),
+                ),
             }
         }
         PolarsDataType::String => {
@@ -2259,18 +2750,17 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .i32()
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?
                 .clone();
-            let values = physical
-                .iter()
-                .map(|value| match value {
+            try_write_wire_numbers_from_iter(
+                vec,
+                physical.iter().map(|value| match value {
                     None => Ok(i32::MIN),
                     Some(value) => value.checked_sub(10_957).ok_or_else(|| {
                         XqdbError::NotAbleToSerializeErr(
                             "date is outside q's representable range".to_string(),
                         )
                     }),
-                })
-                .collect::<Result<Vec<_>, XqdbError>>()?;
-            write_wire_numbers(vec, &values);
+                }),
+            )?;
         }
         PolarsDataType::Datetime(unit, _) => {
             let physical = series
@@ -2282,15 +2772,14 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 PolarTimeUnit::Milliseconds => {
                     vec.extend_from_slice(&[15, 0]);
                     vec.extend_from_slice(&list_header);
-                    let datetimes = physical
-                        .iter()
-                        .map(|value| {
+                    write_wire_numbers_from_iter(
+                        vec,
+                        physical.iter().map(|value| {
                             value
                                 .map(|value| value as f64 / MS_PER_DAY - 10_957.0)
                                 .unwrap_or(f64::NAN)
-                        })
-                        .collect::<Vec<_>>();
-                    write_wire_numbers(vec, &datetimes);
+                        }),
+                    );
                 }
                 PolarTimeUnit::Microseconds | PolarTimeUnit::Nanoseconds => {
                     vec.extend_from_slice(&[12, 0]);
@@ -2300,9 +2789,9 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                         PolarTimeUnit::Microseconds => 1_000,
                         PolarTimeUnit::Milliseconds => unreachable!(),
                     };
-                    let timestamps = physical
-                        .iter()
-                        .map(|value| match value {
+                    try_write_wire_numbers_from_iter(
+                        vec,
+                        physical.iter().map(|value| match value {
                             None => Ok(i64::MIN),
                             Some(value) => {
                                 let unix_nanoseconds =
@@ -2314,9 +2803,8 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                                     })?;
                                 q_timestamp_nanoseconds(unix_nanoseconds)
                             }
-                        })
-                        .collect::<Result<Vec<_>, XqdbError>>()?;
-                    write_wire_numbers(vec, &timestamps);
+                        }),
+                    )?;
                 }
             }
         }
@@ -2333,18 +2821,17 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .i64()
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?
                 .clone();
-            let durations = physical
-                .iter()
-                .map(|value| match value {
+            try_write_wire_numbers_from_iter(
+                vec,
+                physical.iter().map(|value| match value {
                     None => Ok(i64::MIN),
                     Some(value) => value.checked_mul(multiplier).ok_or_else(|| {
                         XqdbError::NotAbleToSerializeErr(
                             "duration is outside q's representable nanosecond range".to_string(),
                         )
                     }),
-                })
-                .collect::<Result<Vec<_>, XqdbError>>()?;
-            write_wire_numbers(vec, &durations);
+                }),
+            )?;
         }
         PolarsDataType::Time => {
             validate_q_time_series(series)?;
@@ -2355,18 +2842,17 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .i64()
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?
                 .clone();
-            let times = physical
-                .iter()
-                .map(|value| match value {
+            try_write_wire_numbers_from_iter(
+                vec,
+                physical.iter().map(|value| match value {
                     None => Ok(i32::MIN),
                     Some(value) => i32::try_from(value / 1_000_000).map_err(|_| {
                         XqdbError::NotAbleToSerializeErr(
                             "time is outside q's representable range".to_string(),
                         )
                     }),
-                })
-                .collect::<Result<Vec<_>, XqdbError>>()?;
-            write_wire_numbers(vec, &times);
+                }),
+            )?;
         }
         PolarsDataType::Array(data_type, size) => {
             vec.extend_from_slice(&[0, 0]);
@@ -2481,43 +2967,23 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 }
                 PolarsDataType::Int16 => {
                     let array = downcast_array::<Int16Array>(list.values().as_ref(), "Int16")?;
-                    let values = array
-                        .iter()
-                        .map(|value| value.copied().unwrap_or(i16::MIN))
-                        .collect::<Vec<_>>();
-                    write_nested_wire_lists(vec, &values, offsets, 5)?;
+                    write_nested_wire_lists(vec, array, offsets, 5, i16::MIN)?;
                 }
                 PolarsDataType::Int32 => {
                     let array = downcast_array::<Int32Array>(list.values().as_ref(), "Int32")?;
-                    let values = array
-                        .iter()
-                        .map(|value| value.copied().unwrap_or(i32::MIN))
-                        .collect::<Vec<_>>();
-                    write_nested_wire_lists(vec, &values, offsets, 6)?;
+                    write_nested_wire_lists(vec, array, offsets, 6, i32::MIN)?;
                 }
                 PolarsDataType::Int64 => {
                     let array = downcast_array::<Int64Array>(list.values().as_ref(), "Int64")?;
-                    let values = array
-                        .iter()
-                        .map(|value| value.copied().unwrap_or(i64::MIN))
-                        .collect::<Vec<_>>();
-                    write_nested_wire_lists(vec, &values, offsets, 7)?;
+                    write_nested_wire_lists(vec, array, offsets, 7, i64::MIN)?;
                 }
                 PolarsDataType::Float32 => {
                     let array = downcast_array::<Float32Array>(list.values().as_ref(), "Float32")?;
-                    let values = array
-                        .iter()
-                        .map(|value| value.copied().unwrap_or(f32::NAN))
-                        .collect::<Vec<_>>();
-                    write_nested_wire_lists(vec, &values, offsets, 8)?;
+                    write_nested_wire_lists(vec, array, offsets, 8, f32::NAN)?;
                 }
                 PolarsDataType::Float64 => {
                     let array = downcast_array::<Float64Array>(list.values().as_ref(), "Float64")?;
-                    let values = array
-                        .iter()
-                        .map(|value| value.copied().unwrap_or(f64::NAN))
-                        .collect::<Vec<_>>();
-                    write_nested_wire_lists(vec, &values, offsets, 9)?;
+                    write_nested_wire_lists(vec, array, offsets, 9, f64::NAN)?;
                 }
                 _ => {
                     return Err(XqdbError::NotSupportedPolarsNestedListTypeErr(
@@ -2532,13 +2998,14 @@ fn serialize_series_into(series: &Series, vec: &mut Vec<u8>) -> Result<(), XqdbE
                 .map_err(|error| XqdbError::NotAbleToSerializeErr(error.to_string()))?;
             vec.extend_from_slice(&[11, 0]);
             vec.extend_from_slice(&list_header);
-            for value in categorical.iter_str() {
-                if let Some(value) = value {
-                    validate_q_symbol(value)?;
-                    vec.extend_from_slice(value.as_bytes());
+            let mut symbols = SymbolLookup::new(categorical.get_mapping());
+            for_each_category(categorical, |category| {
+                if let Some(category) = category {
+                    vec.extend_from_slice(symbols.resolve(category)?.as_bytes());
                 }
                 vec.push(0);
-            }
+                Ok(())
+            })?;
         }
         PolarsDataType::Binary => {
             validate_guid_series(series)?;
@@ -2624,6 +3091,43 @@ mod tests {
             decompress(&compressed, &mut destination, 4),
             Err(XqdbError::DeserializationErr(_))
         ));
+    }
+
+    #[test]
+    fn decompress_rejects_uninitialized_first_backreference() {
+        // Full malformed frame: [1,2,1,0,15,0,0,0,14,0,0,0,1,0,4].
+        let compressed_body = [14, 0, 0, 0, 1, 0, 4];
+        let mut destination = [0u8; 6];
+        let error = decompress(&compressed_body, &mut destination, 4)
+            .expect_err("first operation cannot reference an uninitialized dictionary slot");
+        assert!(error.to_string().contains("has not been initialized"));
+    }
+
+    #[test]
+    fn decompress_accepts_backreferences_to_output_offset_zero() {
+        let compressed_body = [14, 0, 0, 0, 4, b'a', b'b', b'a' ^ b'b', 2];
+        let mut destination = [0u8; 6];
+        decompress(&compressed_body, &mut destination, 4)
+            .expect("offset-zero dictionary entry must be representable");
+        assert_eq!(destination, *b"ababab");
+    }
+
+    #[test]
+    fn decompress_requires_complete_compressed_input_consumption() {
+        let compressed_body = [9, 0, 0, 0, 0, 42, 99];
+        let mut destination = [0u8; 1];
+        let error = decompress(&compressed_body, &mut destination, 4)
+            .expect_err("trailing compressed input must be rejected");
+        assert!(error.to_string().contains("trailing byte"));
+    }
+
+    #[test]
+    fn decompress_ignores_unused_control_bits_after_output_is_complete() {
+        let compressed_body = [9, 0, 0, 0, 0xfe, 42];
+        let mut destination = [0u8; 1];
+        decompress(&compressed_body, &mut destination, 4)
+            .expect("unused control bits do not consume compressed bytes");
+        assert_eq!(destination, [42]);
     }
 
     #[test]
@@ -2956,10 +3460,9 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_datetime_list() {
+    fn deserialize_datetime_null_and_finite_values() {
         let vec = [
-            15, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 255, 0, 0, 0, 0, 0, 0, 240, 255, 70, 5, 58,
-            27, 195, 4, 193, 64, 0, 0, 0, 0, 0, 0, 240, 127,
+            15, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 255, 70, 5, 58, 27, 195, 4, 193, 64,
         ]
         .to_vec();
         let k = deserialize(&vec, &mut 0, SymbolEncoding::Strict).unwrap();
@@ -2968,14 +3471,40 @@ mod tests {
             name.into(),
             PrimitiveArray::new(
                 ArrowDataType::Timestamp(TimeUnit::Nanosecond, None),
-                vec![i64::MIN, i64::MIN + 1, 1699533296789000000i64, i64::MAX].into(),
-                Some(Bitmap::from([false, true, true, true])),
+                vec![i64::MIN, 1699533296789000000i64].into(),
+                Some(Bitmap::from([false, true])),
             )
             .boxed(),
         )
         .unwrap();
         let series: Series = k.try_into().unwrap();
         assert_eq!(series, expect)
+    }
+
+    #[test]
+    fn native_datetime_null_and_infinities_are_not_instants() {
+        let mut atom = vec![241];
+        atom.extend_from_slice(&f64::NAN.to_le_bytes());
+        assert_eq!(
+            deserialize(&atom, &mut 0, SymbolEncoding::Strict).unwrap(),
+            K::Null
+        );
+
+        for sentinel in [f64::NEG_INFINITY, f64::INFINITY] {
+            let mut atom = vec![241];
+            atom.extend_from_slice(&sentinel.to_le_bytes());
+            assert!(matches!(
+                deserialize(&atom, &mut 0, SymbolEncoding::Strict),
+                Err(XqdbError::DeserializationErr(_))
+            ));
+
+            let mut list = vec![15, 0, 1, 0, 0, 0];
+            list.extend_from_slice(&sentinel.to_le_bytes());
+            assert!(matches!(
+                deserialize(&list, &mut 0, SymbolEncoding::Strict),
+                Err(XqdbError::DeserializationErr(_))
+            ));
+        }
     }
 
     #[test]
@@ -3696,6 +4225,31 @@ mod tests {
     }
 
     #[test]
+    fn native_dictionary_rejects_duplicate_symbol_keys() {
+        let duplicate = [
+            99, 11, 0, 2, 0, 0, 0, b'a', 0, b'a', 0, 7, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2,
+            0, 0, 0, 0, 0, 0, 0,
+        ];
+        let error = deserialize(&duplicate, &mut 0, SymbolEncoding::Strict)
+            .expect_err("native dictionary conversion must not overwrite duplicate keys");
+        assert!(error
+            .to_string()
+            .contains("duplicate symbol dictionary key"));
+    }
+
+    #[test]
+    fn qvalue_variant_serializes_its_validated_body_unchanged() {
+        let body = [
+            12, 4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 1, 0, 0, 0, 0, 0, 0, 128,
+        ];
+        let value = crate::QValue::from_bytes(&body).expect("valid attributed timestamp vector");
+        let k = K::QValue(value);
+        assert_eq!(k.j6_len().unwrap(), body.len());
+        assert_eq!(k.try_get_j_type_code().unwrap(), 12);
+        assert_eq!(serialize(&k).unwrap(), body);
+    }
+
+    #[test]
     fn empty_dictionary_round_trips_as_symbol_keyed_dictionary() {
         let empty = || K::Dict(IndexMap::new());
         // (`symbol$())!()
@@ -4230,6 +4784,32 @@ mod tests {
             serialize(&K::Series(categorical)),
             Err(XqdbError::NotAbleToSerializeErr(_))
         ));
+    }
+
+    #[test]
+    fn native_timestamp_null_and_infinities_are_not_instants() {
+        let mut atom = vec![244];
+        atom.extend_from_slice(&i64::MIN.to_le_bytes());
+        assert_eq!(
+            deserialize(&atom, &mut 0, SymbolEncoding::Strict).unwrap(),
+            K::Null
+        );
+
+        for sentinel in [i64::MIN + 1, i64::MAX] {
+            let mut atom = vec![244];
+            atom.extend_from_slice(&sentinel.to_le_bytes());
+            assert!(matches!(
+                deserialize(&atom, &mut 0, SymbolEncoding::Strict),
+                Err(XqdbError::DeserializationErr(_))
+            ));
+
+            let mut list = vec![12, 0, 1, 0, 0, 0];
+            list.extend_from_slice(&sentinel.to_le_bytes());
+            assert!(matches!(
+                deserialize(&list, &mut 0, SymbolEncoding::Strict),
+                Err(XqdbError::DeserializationErr(_))
+            ));
+        }
     }
 
     #[test]
