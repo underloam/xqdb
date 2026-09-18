@@ -1,0 +1,5336 @@
+{
+  "schemaVersion": 2,
+  "suite": "python",
+  "generatedAt": "2026-09-18T00:10:14Z",
+  "provenance": {
+    "sourceState": {
+      "revision": "5889c210040ba66b3f657ba11e6bf679b5962146",
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "describe": "v0.1.8-0-g5889c21-dirty",
+      "dirty": true,
+      "identity": "dirty working-tree source state identified by revision plus contentDigest; this does not prove which source built the loaded artifacts",
+      "contentDigest": {
+        "algorithm": "sha256",
+        "framing": "sorted git pathname bytes framed by uint64-be length, then pathname, one-byte presence, and for present files uint64-be content length plus content",
+        "value": "3ec6c765484dda9086352f7e41605623f4b0ef26927fda5663d363b418d0f514",
+        "fileCount": 32,
+        "pathspecs": [
+          "Cargo.toml",
+          "Cargo.lock",
+          "rust-toolchain.toml",
+          "Taskfile.yml",
+          "crates/xqdb/Cargo.toml",
+          "crates/xqdb/src",
+          "pyproject.toml",
+          "py-xqdb/Cargo.toml",
+          "py-xqdb/rust-toolchain.toml",
+          "py-xqdb/src",
+          "py-xqdb/xqdb",
+          "testing/kdb",
+          "benchmarks/python/bench.py"
+        ],
+        "includesTrackedAndUntrackedFiles": true
+      }
+    },
+    "loadedArtifacts": {
+      "packageVersion": "0.1.9.dev0+g5889c21.d20260917",
+      "pythonPackage": {
+        "installedInsideRepository": true,
+        "contentDigest": {
+          "algorithm": "sha256",
+          "framing": "sorted package-relative UTF-8 path framed by uint64-be length, then path, uint64-be content length, then content; native file names take part in the digest but are not listed because they carry platform tags",
+          "value": "99660ed6badf0584ac92ad13c9b8df622c8a2f971bf89d9df936ce3281fb8a3a"
+        },
+        "files": [
+          {
+            "bytes": 3029,
+            "sha256": "b0434edcd01ab469d7735e63a12076995be23d408861850cc0a0dc0b68eab36b",
+            "kind": "python",
+            "path": "__init__.py"
+          },
+          {
+            "bytes": 4287,
+            "sha256": "08cb1b81ae885f0995d457448ed5b98e8ed3c18a62831c95ea0a495e256b5465",
+            "kind": "python",
+            "path": "_conversion.py"
+          },
+          {
+            "bytes": 166,
+            "sha256": "700ddabdb305dcd27a26a358e2be9a35aaece4a2b208734f3f104d362b047d17",
+            "kind": "python",
+            "path": "exceptions.py"
+          },
+          {
+            "bytes": 24977920,
+            "sha256": "d755df62b0f0ed133e9107a1f9e15bcd0311d8d5207eb8d47cf9161916bc8645",
+            "kind": "native"
+          },
+          {
+            "bytes": 11059,
+            "sha256": "97a3a96f187fbc99f341cb9f606f8b5e1cad26ced3b0c8475f554f1ed53e8f8b",
+            "kind": "python",
+            "path": "q.py"
+          },
+          {
+            "bytes": 2348,
+            "sha256": "67c17d36dc1ba7b68a5fcefcd665618230fcce075e8e1da2865fcb0fe17eb55d",
+            "kind": "python",
+            "path": "util.py"
+          },
+          {
+            "bytes": 20337152,
+            "sha256": "7118c2693baad53ddf393fbde9717bb9544286a0a8354ecd391018c5f0c33cb7",
+            "kind": "native"
+          },
+          {
+            "bytes": 19882496,
+            "sha256": "4df1a9f0a57249e9eee650001fd6ba7ec7099f9585dc28d51138541dc4080547",
+            "kind": "native"
+          }
+        ]
+      },
+      "loadedNativeExtension": {
+        "bytes": 20337152,
+        "sha256": "7118c2693baad53ddf393fbde9717bb9544286a0a8354ecd391018c5f0c33cb7"
+      }
+    },
+    "buildProvenance": {
+      "status": "not-proven",
+      "statement": "source-state and loaded-artifact digests are recorded independently; the harness does not claim an attested build link between them"
+    }
+  },
+  "fixture": {
+    "connection": "loopback",
+    "qVersion": 5,
+    "rows": 100000,
+    "seed": 42,
+    "tables": {
+      "trade": {
+        "columns": 14,
+        "canonicalBytes": 11000178
+      },
+      "wide": {
+        "columns": 64,
+        "canonicalBytes": 51000768
+      },
+      "depth": {
+        "columns": 5,
+        "canonicalBytes": 11300077
+      }
+    }
+  },
+  "runtime": {
+    "python": "3.12.13",
+    "packages": {
+      "narwhals": "2.25.0",
+      "pyarrow": "25.0.1",
+      "pandas": "3.0.5",
+      "polars": "1.44.1",
+      "numpy": "2.5.2"
+    }
+  },
+  "method": {
+    "warmupsPerSubjectPerOperation": 3,
+    "iterationsPerSubjectPerOperation": 50,
+    "retainedResultsPerMemoryProbe": 5,
+    "clock": "time.perf_counter_ns",
+    "referenceSubject": "xqdb-pyarrow",
+    "sameFrameReference": {
+      "xqdb-pyarrow": "xqdb-pyarrow",
+      "xqdb-polars": "xqdb-polars",
+      "xqdb-pandas": "xqdb-pandas",
+      "kola": "xqdb-polars",
+      "qconnect": "xqdb-pandas"
+    },
+    "orderSeed": 42,
+    "scheduling": "one request in flight per subject; every round runs each subject once in a deterministic order reshuffled from `orderSeed`, so positions and predecessors both vary; a cyclic rotation would pin every subject behind the same neighbour in every round",
+    "percentiles": "nearest-rank on raw durations",
+    "rawSamplesRetained": true,
+    "auditData": "raw samplesMs and per-round subject order are retained by default; --no-samples is an explicit local-only size optimization",
+    "payloadBytes": "server-side `count -8!table` for the fixture table: a logical payload size shared by all subjects, not observed wire bytes",
+    "throughput": "payloadBytes divided by the median duration",
+    "memory": "process-wide RSS delta around retained decoded frames with forced GC at both snapshots; a noisy diagnostic, not a library footprint",
+    "preflight": "one subprocess per subject flushes JSON stage boundaries before operations and result events after completed checks, so an interpreter abort is pinned to the operation that killed it without ending the comparison",
+    "scalarComparability": "value-exact latency floor; a subject that cannot return the exact value is listed in `unsupported` instead of being ranked",
+    "readComparability": "every subject that can decode the table is ranked because the server sends identical bytes to all of them; timed validation proves the decoded row count, not table content fidelity. Exact int64 and nanosecond atom probes are recorded in `fidelity`; `roundTripStates` separately distinguishes identical, differs, resized, and unverified decode-then-encode outcomes without assigning an encoder failure to the decoder",
+    "sendComparability": "sends are compared only for subjects whose decoded frame re-encodes to a q-identical value of the same canonical size; others are listed in `unsupported` with no samples, throughput, or ratio",
+    "untimedCorrectnessChecks": "int64 and nanosecond-timestamp exactness are reported by the preflight, not timed: timing a wrong decode against a right one would compare different work",
+    "excludedSubjects": {
+      "pykx": "the licence covering PyKX's bundled q runtime forbids making performance comparisons available to third parties",
+      "qpython and qpython3": "both dereference numpy aliases removed in numpy 2, so they require numpy<1.20 and Python<=3.9; qconnect is the maintained fork measured here",
+      "pyq": "embeds Python inside q rather than acting as a client"
+    }
+  },
+  "subjects": [
+    {
+      "id": "xqdb-pyarrow",
+      "package": "xqdb",
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "frame": "pyarrow",
+      "implementation": "Rust core via PyO3, Arrow C Stream decode",
+      "representation": "narwhals.DataFrame over a pyarrow frame",
+      "notes": []
+    },
+    {
+      "id": "xqdb-polars",
+      "package": "xqdb",
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "frame": "polars",
+      "implementation": "Rust core via PyO3, Arrow C Stream decode",
+      "representation": "narwhals.DataFrame over a polars frame",
+      "notes": []
+    },
+    {
+      "id": "xqdb-pandas",
+      "package": "xqdb",
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "frame": "pandas",
+      "implementation": "Rust core via PyO3, Arrow C Stream decode",
+      "representation": "narwhals.DataFrame over a pandas frame",
+      "notes": []
+    },
+    {
+      "id": "kola",
+      "package": "kola",
+      "version": "2.5.1",
+      "frame": "polars",
+      "implementation": "Rust core via PyO3, Polars decode",
+      "representation": "polars.DataFrame",
+      "notes": []
+    },
+    {
+      "id": "qconnect",
+      "package": "qconnect",
+      "version": "0.1.6",
+      "frame": "pandas",
+      "implementation": "pure Python codec over numpy (maintained qPython fork)",
+      "representation": "pandas.DataFrame",
+      "notes": [
+        "TLS is disabled for parity with the other subjects; qconnect enables it by default",
+        "requests is imported at module scope but is not declared as a dependency"
+      ]
+    }
+  ],
+  "fidelity": {
+    "xqdb-pyarrow": {
+      "tables": {
+        "trade": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11000178,
+          "reencodedRows": 100000
+        },
+        "wide": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 51000768,
+          "reencodedRows": 100000
+        },
+        "depth": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11300077,
+          "reencodedRows": 100000
+        }
+      },
+      "probe": {
+        "exitCode": 0,
+        "completed": true,
+        "lastStage": {
+          "phase": "preflight",
+          "operation": "teardown"
+        }
+      },
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "scalarExact": true,
+      "scalarDetail": "42.0",
+      "int64Exact": true,
+      "int64Detail": "9007199254740993",
+      "nanosecondTimestamp": "rejected",
+      "nanosecondTimestampDetail": "ValueError: q timestamp has sub-microsecond precision that Python cannot represent"
+    },
+    "xqdb-polars": {
+      "tables": {
+        "trade": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11000178,
+          "reencodedRows": 100000
+        },
+        "wide": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 51000768,
+          "reencodedRows": 100000
+        },
+        "depth": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11300077,
+          "reencodedRows": 100000
+        }
+      },
+      "probe": {
+        "exitCode": 0,
+        "completed": true,
+        "lastStage": {
+          "phase": "preflight",
+          "operation": "teardown"
+        }
+      },
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "scalarExact": true,
+      "scalarDetail": "42.0",
+      "int64Exact": true,
+      "int64Detail": "9007199254740993",
+      "nanosecondTimestamp": "rejected",
+      "nanosecondTimestampDetail": "ValueError: q timestamp has sub-microsecond precision that Python cannot represent"
+    },
+    "xqdb-pandas": {
+      "tables": {
+        "trade": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11000178,
+          "reencodedRows": 100000
+        },
+        "wide": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 51000768,
+          "reencodedRows": 100000
+        },
+        "depth": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11300077,
+          "reencodedRows": 100000
+        }
+      },
+      "probe": {
+        "exitCode": 0,
+        "completed": true,
+        "lastStage": {
+          "phase": "preflight",
+          "operation": "teardown"
+        }
+      },
+      "version": "0.1.9.dev0+g5889c21.d20260917",
+      "scalarExact": true,
+      "scalarDetail": "42.0",
+      "int64Exact": true,
+      "int64Detail": "9007199254740993",
+      "nanosecondTimestamp": "rejected",
+      "nanosecondTimestampDetail": "ValueError: q timestamp has sub-microsecond precision that Python cannot represent"
+    },
+    "kola": {
+      "tables": {
+        "trade": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11000178,
+          "reencodedRows": 100000
+        },
+        "wide": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 51000768,
+          "reencodedRows": 100000
+        },
+        "depth": {
+          "readable": true,
+          "sendComparable": false,
+          "roundTrip": "unverified",
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "sendExcludedBecause": "probe aborted during send.depth.identity: thread '<unnamed>' (38816) panicked at crates\\kola\\src\\serde6.rs:1852:42: | range end index 800040 out of range for slice of length 800000 | note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        }
+      },
+      "probe": {
+        "exitCode": 3221226505,
+        "completed": false,
+        "fatal": "thread '<unnamed>' (38816) panicked at crates\\kola\\src\\serde6.rs:1852:42: | range end index 800040 out of range for slice of length 800000 | note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+        "lastStage": {
+          "phase": "send",
+          "operation": "identity",
+          "table": "depth"
+        }
+      },
+      "version": "2.5.1",
+      "scalarExact": true,
+      "scalarDetail": "42.0",
+      "int64Exact": true,
+      "int64Detail": "9007199254740993",
+      "nanosecondTimestamp": "lossy",
+      "nanosecondTimestampDetail": "1704164645123457000"
+    },
+    "qconnect": {
+      "tables": {
+        "trade": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11000178,
+          "reencodedRows": 100000
+        },
+        "wide": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 51000768,
+          "reencodedRows": 100000
+        },
+        "depth": {
+          "readable": true,
+          "sendComparable": true,
+          "roundTrip": "identical",
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "reencodedCanonicalBytes": 11300077,
+          "reencodedRows": 100000
+        }
+      },
+      "probe": {
+        "exitCode": 0,
+        "completed": true,
+        "lastStage": {
+          "phase": "preflight",
+          "operation": "teardown"
+        }
+      },
+      "version": "0.1.6",
+      "scalarExact": true,
+      "scalarDetail": "np.float64(42.0)",
+      "int64Exact": true,
+      "int64Detail": "9007199254740993",
+      "nanosecondTimestamp": "exact",
+      "nanosecondTimestampDetail": "1704164645123456789"
+    }
+  },
+  "operations": {
+    "scalar": {
+      "payloadBytes": null,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 0.2788,
+          "medianMs": 0.29415,
+          "meanMs": 0.304164,
+          "p90Ms": 0.346,
+          "p99Ms": 0.386,
+          "maxMs": 0.386,
+          "samplesMs": [
+            0.2878,
+            0.2958,
+            0.304,
+            0.2852,
+            0.292,
+            0.2897,
+            0.2858,
+            0.2893,
+            0.2828,
+            0.3656,
+            0.3,
+            0.2924,
+            0.2963,
+            0.2788,
+            0.291,
+            0.2831,
+            0.3066,
+            0.3727,
+            0.2885,
+            0.3422,
+            0.3035,
+            0.29,
+            0.3435,
+            0.3105,
+            0.2838,
+            0.3494,
+            0.2908,
+            0.2959,
+            0.3118,
+            0.2868,
+            0.3074,
+            0.2913,
+            0.288,
+            0.3024,
+            0.3129,
+            0.2884,
+            0.3187,
+            0.2906,
+            0.346,
+            0.2859,
+            0.386,
+            0.2962,
+            0.2949,
+            0.2988,
+            0.2963,
+            0.2864,
+            0.29,
+            0.2934,
+            0.3524,
+            0.2866
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 0.2718,
+          "medianMs": 0.29065,
+          "meanMs": 0.291458,
+          "p90Ms": 0.3016,
+          "p99Ms": 0.3138,
+          "maxMs": 0.3138,
+          "samplesMs": [
+            0.2718,
+            0.2884,
+            0.3016,
+            0.2877,
+            0.288,
+            0.2828,
+            0.2837,
+            0.2854,
+            0.2856,
+            0.2924,
+            0.2955,
+            0.2904,
+            0.2959,
+            0.281,
+            0.3138,
+            0.2892,
+            0.2903,
+            0.3029,
+            0.3041,
+            0.2963,
+            0.2986,
+            0.2909,
+            0.3008,
+            0.2941,
+            0.2857,
+            0.2951,
+            0.2829,
+            0.2959,
+            0.2938,
+            0.2938,
+            0.2785,
+            0.2835,
+            0.2845,
+            0.2847,
+            0.297,
+            0.2917,
+            0.2885,
+            0.2853,
+            0.2831,
+            0.2897,
+            0.3036,
+            0.2892,
+            0.2971,
+            0.2984,
+            0.2912,
+            0.2901,
+            0.3048,
+            0.2854,
+            0.2919,
+            0.2963
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 0.2797,
+          "medianMs": 0.2904,
+          "meanMs": 0.292056,
+          "p90Ms": 0.3029,
+          "p99Ms": 0.3191,
+          "maxMs": 0.3191,
+          "samplesMs": [
+            0.2927,
+            0.3006,
+            0.2892,
+            0.2853,
+            0.2973,
+            0.2837,
+            0.2837,
+            0.286,
+            0.2879,
+            0.3135,
+            0.2937,
+            0.3139,
+            0.2848,
+            0.2998,
+            0.2847,
+            0.2898,
+            0.2833,
+            0.286,
+            0.2975,
+            0.2872,
+            0.3029,
+            0.2948,
+            0.3076,
+            0.2827,
+            0.2966,
+            0.2851,
+            0.2934,
+            0.3071,
+            0.2808,
+            0.2827,
+            0.2979,
+            0.2798,
+            0.3191,
+            0.2856,
+            0.2797,
+            0.2863,
+            0.2913,
+            0.2888,
+            0.3,
+            0.2855,
+            0.301,
+            0.291,
+            0.2951,
+            0.288,
+            0.2912,
+            0.2872,
+            0.2926,
+            0.2934,
+            0.2814,
+            0.2936
+          ]
+        },
+        "kola": {
+          "iterations": 50,
+          "minMs": 0.2723,
+          "medianMs": 0.2864,
+          "meanMs": 0.289778,
+          "p90Ms": 0.3057,
+          "p99Ms": 0.348,
+          "maxMs": 0.348,
+          "samplesMs": [
+            0.2781,
+            0.2865,
+            0.2838,
+            0.2811,
+            0.2849,
+            0.2797,
+            0.2868,
+            0.3015,
+            0.2786,
+            0.348,
+            0.2886,
+            0.2723,
+            0.2818,
+            0.3053,
+            0.3016,
+            0.2883,
+            0.2827,
+            0.2847,
+            0.287,
+            0.2832,
+            0.2913,
+            0.2909,
+            0.2916,
+            0.2773,
+            0.2833,
+            0.303,
+            0.2767,
+            0.284,
+            0.3064,
+            0.2834,
+            0.3124,
+            0.3057,
+            0.2826,
+            0.2832,
+            0.2821,
+            0.3106,
+            0.2889,
+            0.2842,
+            0.2834,
+            0.2865,
+            0.3264,
+            0.29,
+            0.2869,
+            0.2954,
+            0.2863,
+            0.2902,
+            0.2893,
+            0.2745,
+            0.2787,
+            0.2792
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 0.2985,
+          "medianMs": 0.31155,
+          "meanMs": 0.319218,
+          "p90Ms": 0.3443,
+          "p99Ms": 0.4419,
+          "maxMs": 0.4419,
+          "samplesMs": [
+            0.3147,
+            0.3522,
+            0.3104,
+            0.3259,
+            0.3317,
+            0.3074,
+            0.3503,
+            0.2987,
+            0.2999,
+            0.3443,
+            0.3103,
+            0.3128,
+            0.311,
+            0.3017,
+            0.3102,
+            0.3125,
+            0.3041,
+            0.3111,
+            0.3058,
+            0.3094,
+            0.318,
+            0.3097,
+            0.3134,
+            0.2985,
+            0.3043,
+            0.3023,
+            0.3105,
+            0.3038,
+            0.3123,
+            0.4419,
+            0.3329,
+            0.3098,
+            0.3128,
+            0.3233,
+            0.3047,
+            0.3339,
+            0.3045,
+            0.3123,
+            0.312,
+            0.316,
+            0.3446,
+            0.321,
+            0.3134,
+            0.3398,
+            0.3075,
+            0.3068,
+            0.3865,
+            0.3266,
+            0.3095,
+            0.3039
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 0.9881013088560259,
+        "xqdb-pandas": 0.9872514023457418,
+        "kola": 0.9736528981811999,
+        "qconnect": 1.0591534931157571
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "kola": 0.9853776019267159,
+        "qconnect": 1.0728305785123966
+      },
+      "unsupported": []
+    },
+    "read.trade": {
+      "payloadBytes": 11000178,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 8.0706,
+          "medianMs": 8.6207,
+          "meanMs": 8.96891,
+          "p90Ms": 9.9788,
+          "p99Ms": 11.4101,
+          "maxMs": 11.4101,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 1216.9066589136696,
+          "samplesMs": [
+            8.6133,
+            8.4945,
+            8.3101,
+            8.1897,
+            9.6473,
+            8.2854,
+            8.3709,
+            9.4457,
+            11.4101,
+            10.1181,
+            8.3551,
+            9.6102,
+            9.8574,
+            8.8324,
+            8.2652,
+            8.0706,
+            9.3328,
+            8.4996,
+            8.5568,
+            8.5434,
+            9.1326,
+            8.9398,
+            10.3561,
+            10.064,
+            8.91,
+            8.391,
+            8.5773,
+            9.0347,
+            9.1234,
+            8.7989,
+            8.7754,
+            8.6001,
+            8.6281,
+            8.2885,
+            8.1852,
+            8.5534,
+            8.1112,
+            8.3707,
+            9.9788,
+            9.8398,
+            9.8238,
+            9.4624,
+            8.5149,
+            11.3897,
+            8.3385,
+            9.4219,
+            8.8235,
+            8.5725,
+            8.2686,
+            8.3621
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 8.7084,
+          "medianMs": 9.4021,
+          "meanMs": 9.556598,
+          "p90Ms": 10.05,
+          "p99Ms": 12.2761,
+          "maxMs": 12.2761,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 1115.7706506522022,
+          "samplesMs": [
+            9.3745,
+            9.5416,
+            9.7733,
+            9.3238,
+            9.1701,
+            9.8819,
+            9.0171,
+            9.3924,
+            10.1346,
+            10.05,
+            9.0035,
+            9.7721,
+            9.1027,
+            11.4283,
+            9.9734,
+            8.7084,
+            8.9749,
+            8.9147,
+            10.8268,
+            9.466,
+            9.03,
+            9.9083,
+            9.0025,
+            9.9341,
+            9.08,
+            9.7248,
+            9.5228,
+            9.052,
+            9.0314,
+            9.5189,
+            9.4118,
+            9.9319,
+            9.9617,
+            9.0585,
+            9.642,
+            10.0339,
+            9.2983,
+            10.7591,
+            9.2433,
+            9.5763,
+            12.2761,
+            9.3374,
+            9.2204,
+            9.6439,
+            9.778,
+            9.0108,
+            8.9963,
+            8.7795,
+            9.1369,
+            9.0989
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 9.7636,
+          "medianMs": 11.10185,
+          "meanMs": 11.057056,
+          "p90Ms": 11.838,
+          "p99Ms": 14.5872,
+          "maxMs": 14.5872,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 944.9404589772939,
+          "samplesMs": [
+            10.3507,
+            10.9827,
+            11.2779,
+            10.1957,
+            10.4634,
+            12.2529,
+            10.8125,
+            11.0736,
+            10.7274,
+            10.0466,
+            10.4327,
+            12.529,
+            11.5229,
+            10.2281,
+            10.9274,
+            11.57,
+            11.1782,
+            11.2371,
+            10.1321,
+            10.3309,
+            11.1301,
+            9.7636,
+            14.5872,
+            10.1294,
+            9.9105,
+            10.9659,
+            11.6973,
+            10.3598,
+            11.5146,
+            10.6861,
+            11.1392,
+            11.1514,
+            11.3897,
+            10.2909,
+            10.461,
+            10.2156,
+            11.5756,
+            11.4327,
+            10.4776,
+            12.0754,
+            11.838,
+            12.415,
+            11.325,
+            10.8626,
+            11.5523,
+            11.6135,
+            11.2851,
+            11.15,
+            11.166,
+            10.4199
+          ]
+        },
+        "kola": {
+          "iterations": 50,
+          "minMs": 14.0982,
+          "medianMs": 14.89875,
+          "meanMs": 15.429396,
+          "p90Ms": 15.99,
+          "p99Ms": 35.3998,
+          "maxMs": 35.3998,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 704.1253282655974,
+          "samplesMs": [
+            16.5633,
+            14.3887,
+            14.7768,
+            15.602,
+            14.7872,
+            14.1814,
+            14.9049,
+            15.4727,
+            16.2153,
+            15.7397,
+            15.5717,
+            16.6587,
+            14.9258,
+            15.99,
+            15.2191,
+            14.5402,
+            14.7026,
+            14.2307,
+            14.7448,
+            14.1144,
+            14.9136,
+            14.5769,
+            14.8926,
+            14.7515,
+            14.4343,
+            14.1732,
+            15.5433,
+            15.642,
+            15.53,
+            14.0982,
+            35.3998,
+            14.5896,
+            14.618,
+            15.3691,
+            14.7029,
+            15.2247,
+            14.4271,
+            15.3998,
+            15.6322,
+            15.1038,
+            14.7155,
+            14.6559,
+            15.1532,
+            15.105,
+            16.2199,
+            14.3598,
+            14.6454,
+            14.4458,
+            14.4477,
+            15.369
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 87.2004,
+          "medianMs": 89.35835,
+          "meanMs": 91.4041,
+          "p90Ms": 99.7936,
+          "p99Ms": 112.0423,
+          "maxMs": 112.0423,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 117.39907053450595,
+          "samplesMs": [
+            112.0423,
+            103.3098,
+            87.5588,
+            87.6198,
+            88.1643,
+            87.2004,
+            88.751,
+            91.7035,
+            88.1509,
+            87.524,
+            90.2192,
+            89.5007,
+            92.2168,
+            93.3857,
+            101.1278,
+            91.7199,
+            87.9991,
+            89.8067,
+            88.7468,
+            88.4429,
+            87.6929,
+            87.3501,
+            89.1406,
+            89.1502,
+            87.7297,
+            88.476,
+            88.3179,
+            87.9464,
+            87.8796,
+            89.4102,
+            92.2509,
+            88.8328,
+            89.3065,
+            87.3966,
+            89.924,
+            87.6326,
+            90.1889,
+            91.8871,
+            90.4626,
+            91.742,
+            91.5795,
+            90.683,
+            110.816,
+            108.0373,
+            93.7895,
+            92.2165,
+            99.7936,
+            88.0083,
+            89.5442,
+            87.8291
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0906422912292506,
+        "xqdb-pandas": 1.2878130546243347,
+        "kola": 1.7282529260964887,
+        "qconnect": 10.365556161332607
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "kola": 1.584619393539741,
+        "qconnect": 8.048960308417065
+      },
+      "readValidation": "decoded row count only; table content fidelity is not inferred",
+      "roundTripStates": {
+        "xqdb-pyarrow": "identical",
+        "xqdb-polars": "identical",
+        "xqdb-pandas": "identical",
+        "kola": "identical",
+        "qconnect": "identical"
+      },
+      "roundTripReasons": {},
+      "roundTripUnverifiedSubjects": [],
+      "roundTripUnverifiedReasons": {},
+      "unsupported": []
+    },
+    "send.trade": {
+      "payloadBytes": 11000178,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 14.2049,
+          "medianMs": 15.36445,
+          "meanMs": 26.077662,
+          "p90Ms": 56.4197,
+          "p99Ms": 61.0,
+          "maxMs": 61.0,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 682.7831282276339,
+          "samplesMs": [
+            61.0,
+            15.1435,
+            55.9521,
+            15.5388,
+            58.7464,
+            15.6886,
+            15.2893,
+            56.6063,
+            56.0582,
+            15.349,
+            14.9612,
+            15.7613,
+            15.1483,
+            15.1227,
+            15.1378,
+            15.1076,
+            15.1812,
+            14.8248,
+            15.1536,
+            15.0393,
+            55.9414,
+            15.3199,
+            55.8653,
+            15.0891,
+            15.3799,
+            15.8621,
+            15.4684,
+            15.5174,
+            15.1818,
+            15.6603,
+            15.096,
+            15.0892,
+            57.1482,
+            14.9063,
+            14.7259,
+            14.9977,
+            56.3233,
+            14.9829,
+            14.9203,
+            14.2049,
+            15.3954,
+            15.9258,
+            15.412,
+            58.5908,
+            56.4197,
+            15.3982,
+            14.8606,
+            56.4156,
+            15.0264,
+            55.9483
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 15.2175,
+          "medianMs": 15.7769,
+          "meanMs": 30.76213,
+          "p90Ms": 58.569,
+          "p99Ms": 63.8415,
+          "maxMs": 63.8415,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 664.9333667892342,
+          "samplesMs": [
+            16.1314,
+            56.0147,
+            55.8466,
+            15.3803,
+            15.504,
+            15.5189,
+            58.5815,
+            15.5504,
+            55.9564,
+            15.5937,
+            57.053,
+            15.7639,
+            56.014,
+            15.345,
+            15.5684,
+            57.1709,
+            56.8699,
+            15.4727,
+            15.5508,
+            15.4541,
+            15.4413,
+            57.6474,
+            15.3944,
+            59.4196,
+            15.7158,
+            60.4764,
+            16.2265,
+            63.8415,
+            55.778,
+            16.1694,
+            55.9553,
+            55.743,
+            15.4978,
+            15.7899,
+            15.3028,
+            16.0981,
+            15.6876,
+            56.5559,
+            15.9207,
+            15.2175,
+            15.6734,
+            15.4551,
+            15.5805,
+            16.4062,
+            15.2416,
+            58.569,
+            60.4717,
+            15.5848,
+            15.218,
+            15.6867
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 17.2061,
+          "medianMs": 18.1767,
+          "meanMs": 34.924528,
+          "p90Ms": 60.5341,
+          "p99Ms": 65.6712,
+          "maxMs": 65.6712,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 577.1447641484466,
+          "samplesMs": [
+            17.5241,
+            17.7521,
+            60.4888,
+            59.9994,
+            17.8095,
+            60.5341,
+            17.9327,
+            17.4957,
+            17.6591,
+            64.036,
+            59.9541,
+            18.0933,
+            59.9409,
+            17.513,
+            61.5897,
+            17.5242,
+            60.7054,
+            59.9974,
+            17.9741,
+            18.1786,
+            18.1748,
+            18.8718,
+            60.1026,
+            18.2563,
+            17.519,
+            18.0452,
+            17.7033,
+            65.6712,
+            57.944,
+            17.2504,
+            59.6907,
+            21.8854,
+            17.7122,
+            60.0725,
+            17.3874,
+            59.8587,
+            17.6697,
+            17.2061,
+            17.6267,
+            18.0707,
+            17.4294,
+            18.3419,
+            60.0088,
+            59.3527,
+            17.7235,
+            60.5653,
+            17.5106,
+            17.7524,
+            57.8241,
+            60.2968
+          ]
+        },
+        "kola": {
+          "iterations": 50,
+          "minMs": 18.972,
+          "medianMs": 20.84475,
+          "meanMs": 34.791018,
+          "p90Ms": 63.8203,
+          "p99Ms": 68.0655,
+          "maxMs": 68.0655,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 503.27239398395614,
+          "samplesMs": [
+            20.6932,
+            63.8203,
+            20.6918,
+            20.0347,
+            63.8428,
+            62.7852,
+            20.5984,
+            20.5412,
+            20.2151,
+            60.8537,
+            20.2698,
+            68.0655,
+            64.5882,
+            20.7216,
+            61.2628,
+            20.3949,
+            21.0502,
+            20.475,
+            64.8469,
+            20.8721,
+            60.7501,
+            20.9726,
+            20.4464,
+            63.1604,
+            61.1906,
+            20.8174,
+            21.7723,
+            20.7338,
+            20.4623,
+            22.056,
+            20.341,
+            20.9346,
+            19.2185,
+            60.4033,
+            19.189,
+            59.8937,
+            59.9399,
+            19.4415,
+            18.972,
+            19.66,
+            20.4604,
+            61.5214,
+            21.1419,
+            20.8044,
+            20.4082,
+            20.4334,
+            20.9612,
+            62.6675,
+            20.1786,
+            63.9951
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 54.9367,
+          "medianMs": 59.00695,
+          "meanMs": 74.45972,
+          "p90Ms": 101.3619,
+          "p99Ms": 103.9817,
+          "maxMs": 103.9817,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 177.78562075309893,
+          "samplesMs": [
+            59.3376,
+            59.0295,
+            103.536,
+            100.3933,
+            57.4745,
+            103.9817,
+            57.6002,
+            57.8061,
+            100.404,
+            59.5132,
+            99.6123,
+            100.1102,
+            58.2506,
+            101.6784,
+            58.6636,
+            58.2595,
+            58.8077,
+            58.704,
+            98.4776,
+            59.4508,
+            58.2853,
+            58.9844,
+            101.3619,
+            56.8565,
+            100.0982,
+            100.9246,
+            59.4356,
+            56.0123,
+            54.9367,
+            58.8757,
+            102.6053,
+            100.6298,
+            100.6496,
+            59.2169,
+            100.5874,
+            58.3005,
+            57.9499,
+            56.9986,
+            58.6417,
+            101.7559,
+            58.2289,
+            58.5561,
+            58.7876,
+            57.6994,
+            58.6872,
+            99.8006,
+            58.8172,
+            100.1134,
+            57.1669,
+            100.9311
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0268444363449392,
+        "xqdb-pandas": 1.1830361646528187,
+        "kola": 1.3566870275213236,
+        "qconnect": 3.84048566658748
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "kola": 1.3212196312330053,
+        "qconnect": 3.2462960823471807
+      },
+      "unsupported": []
+    },
+    "read.wide": {
+      "payloadBytes": 51000768,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 28.2269,
+          "medianMs": 29.64645,
+          "meanMs": 29.764512,
+          "p90Ms": 30.9123,
+          "p99Ms": 34.3595,
+          "maxMs": 34.3595,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 1640.6052852396745,
+          "samplesMs": [
+            29.0156,
+            28.2269,
+            29.622,
+            30.9281,
+            29.7017,
+            28.5491,
+            29.5482,
+            28.7154,
+            28.3513,
+            29.6356,
+            29.4596,
+            34.3595,
+            28.9198,
+            29.1407,
+            30.615,
+            29.0948,
+            29.886,
+            29.2004,
+            29.8277,
+            28.8706,
+            28.8616,
+            29.5776,
+            29.7743,
+            29.2835,
+            28.8984,
+            28.4538,
+            29.2264,
+            29.1676,
+            28.7868,
+            30.3405,
+            30.4662,
+            28.7661,
+            29.773,
+            32.5522,
+            29.4295,
+            29.7089,
+            30.0126,
+            29.7825,
+            29.7839,
+            30.9199,
+            30.9123,
+            30.1794,
+            30.6298,
+            31.9844,
+            30.3229,
+            30.6856,
+            29.6573,
+            29.8216,
+            28.9566,
+            29.8424
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 29.1242,
+          "medianMs": 30.3641,
+          "meanMs": 31.012724,
+          "p90Ms": 33.2214,
+          "p99Ms": 37.8674,
+          "maxMs": 37.8674,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 1601.8298766831142,
+          "samplesMs": [
+            33.2009,
+            35.593,
+            34.8484,
+            30.3322,
+            30.0802,
+            30.3471,
+            31.1847,
+            30.7112,
+            29.294,
+            31.4249,
+            30.3305,
+            29.4604,
+            31.9623,
+            33.2214,
+            31.176,
+            29.7017,
+            29.581,
+            30.3811,
+            33.8086,
+            30.307,
+            29.9315,
+            29.7675,
+            33.0178,
+            29.4974,
+            31.0735,
+            30.6487,
+            29.1242,
+            30.6561,
+            30.199,
+            32.1551,
+            30.2387,
+            30.9182,
+            30.9059,
+            30.6219,
+            34.9645,
+            30.4007,
+            29.3393,
+            29.4717,
+            30.0836,
+            30.1579,
+            31.3492,
+            37.8674,
+            30.5126,
+            30.182,
+            30.2902,
+            31.7647,
+            29.3295,
+            29.3039,
+            29.7703,
+            30.1466
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 32.3532,
+          "medianMs": 34.0881,
+          "meanMs": 34.914044,
+          "p90Ms": 37.8529,
+          "p99Ms": 42.9566,
+          "maxMs": 42.9566,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 1426.8358329913885,
+          "samplesMs": [
+            34.6722,
+            34.03,
+            37.6849,
+            33.888,
+            32.7534,
+            34.5721,
+            35.8823,
+            33.5812,
+            36.0236,
+            36.3949,
+            33.4111,
+            33.5892,
+            37.8529,
+            37.0998,
+            41.8956,
+            38.7833,
+            33.2298,
+            33.2089,
+            33.0105,
+            33.0583,
+            34.1462,
+            37.9605,
+            32.4217,
+            33.2806,
+            32.8433,
+            36.7502,
+            33.2138,
+            33.1988,
+            37.9521,
+            33.7061,
+            34.4207,
+            32.8615,
+            36.1399,
+            32.9029,
+            34.9186,
+            32.9392,
+            32.3532,
+            36.859,
+            32.4708,
+            33.0733,
+            36.9692,
+            32.8905,
+            34.3007,
+            37.5992,
+            34.2536,
+            36.0214,
+            42.9566,
+            32.7957,
+            32.6462,
+            36.2347
+          ]
+        },
+        "kola": {
+          "iterations": 50,
+          "minMs": 53.9941,
+          "medianMs": 86.9449,
+          "meanMs": 90.605294,
+          "p90Ms": 121.2645,
+          "p99Ms": 164.8098,
+          "maxMs": 164.8098,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 559.4131749946662,
+          "samplesMs": [
+            136.3512,
+            113.7577,
+            122.8507,
+            124.2305,
+            67.8138,
+            63.5707,
+            121.2645,
+            84.5375,
+            94.6832,
+            119.0218,
+            69.4109,
+            94.2406,
+            92.95,
+            107.1942,
+            76.238,
+            96.2948,
+            86.1026,
+            87.7872,
+            57.3658,
+            119.8159,
+            80.4203,
+            71.5655,
+            97.5213,
+            100.8298,
+            77.3018,
+            91.5461,
+            137.9026,
+            53.9941,
+            91.1988,
+            75.8791,
+            84.3142,
+            71.0578,
+            83.7814,
+            96.5592,
+            91.3739,
+            71.1343,
+            102.1233,
+            58.1715,
+            74.2095,
+            82.1201,
+            164.8098,
+            78.9623,
+            104.1111,
+            59.4122,
+            60.1087,
+            83.8043,
+            68.4018,
+            108.2526,
+            84.7576,
+            89.1581
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 139.9403,
+          "medianMs": 178.00005,
+          "meanMs": 181.275766,
+          "p90Ms": 219.1438,
+          "p99Ms": 238.0897,
+          "maxMs": 238.0897,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 273.24780278766076,
+          "samplesMs": [
+            154.852,
+            158.6721,
+            212.6987,
+            225.5235,
+            156.6849,
+            182.4882,
+            160.4645,
+            149.6352,
+            144.466,
+            142.5362,
+            214.8958,
+            180.4865,
+            207.8978,
+            193.5262,
+            238.0897,
+            185.3449,
+            225.6927,
+            180.936,
+            175.4073,
+            166.1345,
+            144.9492,
+            166.4332,
+            196.4826,
+            181.7601,
+            165.2397,
+            145.5962,
+            196.9815,
+            213.948,
+            150.2334,
+            224.6069,
+            165.2521,
+            174.8123,
+            176.3383,
+            139.9403,
+            158.1077,
+            208.9568,
+            149.4286,
+            172.282,
+            228.4458,
+            177.9922,
+            219.1438,
+            177.4811,
+            190.4553,
+            147.8406,
+            188.2571,
+            203.1142,
+            201.789,
+            178.0079,
+            204.2011,
+            159.2786
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0242069455196152,
+        "xqdb-pandas": 1.1498206361975885,
+        "kola": 2.932725503390794,
+        "qconnect": 6.004093238819487
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "kola": 2.863411067675314,
+        "qconnect": 5.221765073442052
+      },
+      "readValidation": "decoded row count only; table content fidelity is not inferred",
+      "roundTripStates": {
+        "xqdb-pyarrow": "identical",
+        "xqdb-polars": "identical",
+        "xqdb-pandas": "identical",
+        "kola": "identical",
+        "qconnect": "identical"
+      },
+      "roundTripReasons": {},
+      "roundTripUnverifiedSubjects": [],
+      "roundTripUnverifiedReasons": {},
+      "unsupported": []
+    },
+    "send.wide": {
+      "payloadBytes": 51000768,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 45.9427,
+          "medianMs": 52.34665,
+          "meanMs": 59.17853,
+          "p90Ms": 92.9419,
+          "p99Ms": 97.9004,
+          "maxMs": 97.9004,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 929.1544455775825,
+          "samplesMs": [
+            52.7241,
+            52.2355,
+            53.1921,
+            51.7512,
+            51.4282,
+            88.9578,
+            92.9419,
+            46.5381,
+            49.4685,
+            90.0826,
+            46.3107,
+            91.4749,
+            97.9004,
+            93.041,
+            46.1801,
+            91.9394,
+            46.0158,
+            45.9427,
+            46.605,
+            48.2275,
+            47.6898,
+            46.5689,
+            48.072,
+            48.013,
+            52.5442,
+            51.7021,
+            51.6325,
+            51.9927,
+            51.6682,
+            51.982,
+            52.7371,
+            52.9367,
+            52.1774,
+            93.9614,
+            97.019,
+            54.1338,
+            52.989,
+            52.5239,
+            94.9575,
+            52.4578,
+            52.7865,
+            52.0875,
+            53.2619,
+            52.903,
+            52.6195,
+            51.2641,
+            46.2288,
+            49.8168,
+            54.0404,
+            53.2015
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 46.3318,
+          "medianMs": 52.8554,
+          "meanMs": 59.260484,
+          "p90Ms": 94.8418,
+          "p99Ms": 96.181,
+          "maxMs": 96.181,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 920.2110391481996,
+          "samplesMs": [
+            52.7301,
+            53.4213,
+            52.8016,
+            53.003,
+            95.3919,
+            53.4161,
+            53.3436,
+            51.6527,
+            88.5444,
+            47.7454,
+            90.4948,
+            46.6952,
+            95.2929,
+            53.3351,
+            52.1748,
+            52.355,
+            52.308,
+            96.181,
+            50.9014,
+            46.8857,
+            47.1901,
+            52.9075,
+            52.0107,
+            53.1462,
+            52.3549,
+            52.958,
+            52.4156,
+            53.4664,
+            55.8646,
+            52.4086,
+            53.3933,
+            52.2335,
+            51.6044,
+            48.7963,
+            53.3654,
+            54.0781,
+            95.5959,
+            53.226,
+            52.4666,
+            52.0518,
+            52.8033,
+            53.9375,
+            51.8884,
+            47.2463,
+            47.0786,
+            89.2005,
+            46.3318,
+            95.8466,
+            53.6415,
+            94.8418
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 54.1406,
+          "medianMs": 59.2339,
+          "meanMs": 63.84994,
+          "p90Ms": 72.8133,
+          "p99Ms": 107.9803,
+          "maxMs": 107.9803,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 821.1197060904947,
+          "samplesMs": [
+            58.2054,
+            60.6529,
+            58.4595,
+            60.0513,
+            59.1031,
+            60.9314,
+            60.4597,
+            59.5374,
+            58.7493,
+            100.8486,
+            59.0254,
+            59.024,
+            59.0636,
+            101.1565,
+            58.3287,
+            56.2246,
+            54.1406,
+            58.9262,
+            57.8247,
+            60.5209,
+            60.8687,
+            59.0793,
+            59.8879,
+            59.8405,
+            58.9702,
+            58.8433,
+            61.0473,
+            58.3709,
+            58.606,
+            58.6048,
+            58.1974,
+            58.9058,
+            58.8441,
+            60.9465,
+            104.0453,
+            61.2379,
+            59.4363,
+            59.9964,
+            99.9635,
+            58.8805,
+            59.6433,
+            58.5884,
+            107.9803,
+            59.0553,
+            72.8133,
+            59.1137,
+            59.8676,
+            59.3541,
+            60.5739,
+            59.7007
+          ]
+        },
+        "kola": {
+          "iterations": 50,
+          "minMs": 58.0169,
+          "medianMs": 63.04885,
+          "meanMs": 70.939082,
+          "p90Ms": 103.7321,
+          "p99Ms": 106.2069,
+          "maxMs": 106.2069,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 771.4355227509105,
+          "samplesMs": [
+            63.1011,
+            64.2281,
+            62.7483,
+            60.2686,
+            58.0169,
+            58.527,
+            62.9636,
+            64.0628,
+            63.0451,
+            62.2848,
+            104.0551,
+            63.2605,
+            62.5885,
+            64.1111,
+            62.6042,
+            63.0526,
+            83.3146,
+            58.3351,
+            96.9728,
+            71.1726,
+            81.0114,
+            64.7443,
+            64.1478,
+            103.8039,
+            62.2854,
+            62.1063,
+            62.8179,
+            62.0039,
+            62.4822,
+            61.9898,
+            62.7337,
+            62.3212,
+            62.4881,
+            66.739,
+            65.7614,
+            63.6358,
+            104.0889,
+            104.8533,
+            63.2285,
+            61.4364,
+            62.8328,
+            62.3186,
+            62.6188,
+            106.2069,
+            62.9639,
+            63.6255,
+            103.6773,
+            62.5119,
+            103.0737,
+            103.7321
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 136.8673,
+          "medianMs": 139.17085,
+          "meanMs": 143.611054,
+          "p90Ms": 143.3118,
+          "p99Ms": 188.7155,
+          "maxMs": 188.7155,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 349.4849859621734,
+          "samplesMs": [
+            179.4048,
+            137.751,
+            180.8512,
+            138.0727,
+            139.7511,
+            142.2563,
+            143.3118,
+            142.1497,
+            137.5583,
+            136.8673,
+            139.2398,
+            137.4125,
+            182.8828,
+            137.3366,
+            137.2866,
+            179.6828,
+            140.6478,
+            137.2131,
+            138.7922,
+            142.0446,
+            141.2724,
+            138.5939,
+            138.053,
+            139.149,
+            138.4015,
+            139.9645,
+            140.7253,
+            137.8778,
+            139.598,
+            139.0242,
+            137.6389,
+            139.8286,
+            138.6307,
+            139.8491,
+            139.6962,
+            142.3876,
+            139.1927,
+            138.7066,
+            137.0453,
+            141.6543,
+            137.1698,
+            137.9949,
+            143.0773,
+            138.6176,
+            138.8746,
+            140.1951,
+            137.6514,
+            138.0842,
+            142.3697,
+            188.7155
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0097188645309683,
+        "xqdb-pandas": 1.1315700240607565,
+        "kola": 1.20444861323504,
+        "qconnect": 2.6586390915177955
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "kola": 1.1928554130703768,
+        "qconnect": 2.3495135386999677
+      },
+      "unsupported": []
+    },
+    "read.depth": {
+      "payloadBytes": 11300077,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 9.1818,
+          "medianMs": 9.9829,
+          "meanMs": 10.187636,
+          "p90Ms": 11.2958,
+          "p99Ms": 13.3607,
+          "maxMs": 13.3607,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 1079.5052748512944,
+          "samplesMs": [
+            10.3664,
+            9.3848,
+            10.5223,
+            10.8048,
+            11.3496,
+            13.3607,
+            10.1026,
+            10.3119,
+            9.9287,
+            10.4448,
+            10.2817,
+            11.2958,
+            10.109,
+            9.5533,
+            9.7792,
+            10.1469,
+            9.6667,
+            10.699,
+            10.6557,
+            9.3962,
+            9.2387,
+            9.8188,
+            10.6467,
+            9.9497,
+            10.2253,
+            9.865,
+            9.1818,
+            9.5748,
+            10.4034,
+            9.8963,
+            10.0507,
+            9.3705,
+            9.2276,
+            9.247,
+            9.672,
+            9.4497,
+            9.6348,
+            10.0097,
+            9.5878,
+            10.2083,
+            9.7601,
+            11.5552,
+            10.6993,
+            10.9545,
+            11.3247,
+            9.8866,
+            12.5348,
+            9.3497,
+            9.9561,
+            9.9421
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 9.8996,
+          "medianMs": 10.81525,
+          "meanMs": 10.91608,
+          "p90Ms": 11.5295,
+          "p99Ms": 14.4971,
+          "maxMs": 14.4971,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 996.4257144599512,
+          "samplesMs": [
+            10.7331,
+            10.4294,
+            11.2356,
+            11.3502,
+            10.8961,
+            11.0769,
+            10.4284,
+            10.2802,
+            11.5001,
+            11.2761,
+            11.5295,
+            10.3469,
+            10.0724,
+            10.6879,
+            11.3798,
+            10.9973,
+            10.7173,
+            10.8349,
+            10.7956,
+            11.3548,
+            10.1681,
+            11.2957,
+            10.9945,
+            10.8852,
+            10.2836,
+            11.8482,
+            10.2243,
+            10.183,
+            9.8996,
+            11.8567,
+            10.8866,
+            9.9235,
+            10.5757,
+            11.547,
+            10.531,
+            10.8815,
+            10.1893,
+            11.3105,
+            10.705,
+            10.6001,
+            10.4097,
+            14.4971,
+            10.2145,
+            11.3437,
+            12.618,
+            11.2385,
+            10.6221,
+            11.1018,
+            10.5887,
+            10.4583
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 25.3743,
+          "medianMs": 26.5017,
+          "meanMs": 26.635496,
+          "p90Ms": 27.7805,
+          "p99Ms": 29.6355,
+          "maxMs": 29.6355,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 406.6378084542874,
+          "samplesMs": [
+            26.4148,
+            26.5208,
+            26.2174,
+            26.6945,
+            27.3882,
+            26.9121,
+            27.3474,
+            26.6489,
+            26.0279,
+            27.1929,
+            27.8238,
+            28.183,
+            26.3631,
+            27.6594,
+            26.4445,
+            27.4619,
+            25.4321,
+            26.1224,
+            26.4629,
+            25.6577,
+            26.5592,
+            26.3805,
+            25.7968,
+            25.8395,
+            25.5248,
+            26.7271,
+            29.6355,
+            26.4826,
+            26.676,
+            25.836,
+            26.928,
+            25.8128,
+            27.3352,
+            25.5122,
+            26.0956,
+            25.7859,
+            26.5738,
+            27.7805,
+            26.1742,
+            26.3606,
+            27.0278,
+            26.0359,
+            25.7068,
+            26.654,
+            26.188,
+            25.3743,
+            27.2814,
+            27.8029,
+            27.7872,
+            27.124
+          ]
+        },
+        "kola": {
+          "iterations": 50,
+          "minMs": 14.1064,
+          "medianMs": 15.0065,
+          "meanMs": 15.074458,
+          "p90Ms": 15.6713,
+          "p99Ms": 17.3976,
+          "maxMs": 17.3976,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 718.1283582656174,
+          "samplesMs": [
+            15.298,
+            15.0382,
+            15.0282,
+            14.7725,
+            15.0721,
+            14.6279,
+            15.3376,
+            14.6444,
+            14.9216,
+            15.0039,
+            15.6713,
+            14.1064,
+            14.5752,
+            15.0498,
+            15.4905,
+            14.7923,
+            15.8786,
+            14.4465,
+            14.7528,
+            14.5162,
+            15.4355,
+            15.42,
+            15.5285,
+            16.0343,
+            15.174,
+            17.3976,
+            14.7016,
+            15.4319,
+            14.5591,
+            15.1199,
+            15.127,
+            14.7055,
+            15.3123,
+            14.3592,
+            15.0091,
+            14.4357,
+            15.7104,
+            14.9961,
+            15.2521,
+            15.0912,
+            14.7106,
+            17.3658,
+            14.8972,
+            14.9196,
+            14.2435,
+            15.1081,
+            14.4322,
+            14.9709,
+            14.7254,
+            14.5246
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 9223.5692,
+          "medianMs": 9548.9844,
+          "meanMs": 9626.959984,
+          "p90Ms": 9971.9517,
+          "p99Ms": 10038.2415,
+          "maxMs": 10038.2415,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 1.1285590966420458,
+          "samplesMs": [
+            9407.7116,
+            9488.4541,
+            9906.6286,
+            9831.3574,
+            10038.2415,
+            9543.704,
+            9761.9242,
+            9332.6703,
+            9396.6028,
+            9508.1601,
+            9835.599,
+            9819.3668,
+            10006.7223,
+            9554.2648,
+            9731.4903,
+            9310.8723,
+            9400.3322,
+            9493.1673,
+            9855.0543,
+            9783.2763,
+            9971.9517,
+            9476.2523,
+            9792.3495,
+            9311.3579,
+            9328.6377,
+            9534.7829,
+            9803.1356,
+            9751.6875,
+            9992.7214,
+            9485.4226,
+            9805.2173,
+            9275.0346,
+            9380.7662,
+            9455.4062,
+            9806.9618,
+            9759.0147,
+            9974.6852,
+            9490.9115,
+            9801.0888,
+            9292.2394,
+            9328.2127,
+            9503.0382,
+            9870.2222,
+            9806.1843,
+            9985.2087,
+            9502.3051,
+            9776.4459,
+            9223.5692,
+            9352.2762,
+            9505.3117
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0833775756543689,
+        "xqdb-pandas": 2.654709553336205,
+        "kola": 1.5032205070670848,
+        "qconnect": 956.5341133338006
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "kola": 1.387531494879915,
+        "qconnect": 360.31591935611675
+      },
+      "readValidation": "decoded row count only; table content fidelity is not inferred",
+      "roundTripStates": {
+        "xqdb-pyarrow": "identical",
+        "xqdb-polars": "identical",
+        "xqdb-pandas": "identical",
+        "kola": "unverified",
+        "qconnect": "identical"
+      },
+      "roundTripReasons": {
+        "kola": "probe aborted during send.depth.identity: thread '<unnamed>' (38816) panicked at crates\\kola\\src\\serde6.rs:1852:42: | range end index 800040 out of range for slice of length 800000 | note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+      },
+      "roundTripUnverifiedSubjects": [
+        "kola"
+      ],
+      "roundTripUnverifiedReasons": {
+        "kola": "probe aborted during send.depth.identity: thread '<unnamed>' (38816) panicked at crates\\kola\\src\\serde6.rs:1852:42: | range end index 800040 out of range for slice of length 800000 | note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+      },
+      "unsupported": []
+    },
+    "send.depth": {
+      "payloadBytes": 11300077,
+      "subjects": {
+        "xqdb-pyarrow": {
+          "iterations": 50,
+          "minMs": 14.5185,
+          "medianMs": 16.093,
+          "meanMs": 17.722522,
+          "p90Ms": 16.5656,
+          "p99Ms": 62.1528,
+          "maxMs": 62.1528,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 669.6447653211327,
+          "samplesMs": [
+            16.502,
+            16.564,
+            16.3757,
+            16.5656,
+            15.822,
+            16.4361,
+            16.1478,
+            16.3681,
+            16.0027,
+            16.3971,
+            16.7542,
+            16.4681,
+            16.2884,
+            16.573,
+            15.998,
+            16.2312,
+            62.1528,
+            16.0871,
+            15.972,
+            16.2904,
+            15.9138,
+            16.2239,
+            16.0989,
+            16.2,
+            15.7643,
+            15.0734,
+            14.5185,
+            14.5942,
+            54.7613,
+            14.5743,
+            14.8715,
+            16.6302,
+            16.4167,
+            15.9602,
+            16.0841,
+            16.37,
+            16.3511,
+            15.9179,
+            15.9852,
+            15.8266,
+            15.8494,
+            15.6951,
+            16.0464,
+            16.3471,
+            16.0734,
+            16.5443,
+            16.0411,
+            15.7063,
+            15.9823,
+            15.7083
+          ]
+        },
+        "xqdb-polars": {
+          "iterations": 50,
+          "minMs": 14.8676,
+          "medianMs": 16.3032,
+          "meanMs": 18.07527,
+          "p90Ms": 17.0568,
+          "p99Ms": 59.9699,
+          "maxMs": 59.9699,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 661.0109186118668,
+          "samplesMs": [
+            16.9111,
+            17.0568,
+            16.5657,
+            16.2889,
+            16.2527,
+            17.1362,
+            16.3059,
+            16.3345,
+            59.4936,
+            16.3884,
+            16.0737,
+            16.0145,
+            14.8676,
+            16.3088,
+            16.2544,
+            16.577,
+            16.1678,
+            16.8375,
+            17.3304,
+            16.5185,
+            16.2126,
+            16.4597,
+            16.0971,
+            16.0618,
+            16.3942,
+            16.0962,
+            17.2341,
+            16.2485,
+            16.1687,
+            16.3859,
+            16.2929,
+            16.1978,
+            16.3005,
+            15.6993,
+            16.3122,
+            16.1269,
+            59.9699,
+            16.6936,
+            16.415,
+            16.1551,
+            16.2211,
+            16.0622,
+            16.2986,
+            15.9797,
+            16.4423,
+            16.3585,
+            16.211,
+            16.1178,
+            16.5048,
+            16.3615
+          ]
+        },
+        "xqdb-pandas": {
+          "iterations": 50,
+          "minMs": 41.1442,
+          "medianMs": 43.77215,
+          "meanMs": 48.420992,
+          "p90Ms": 81.3945,
+          "p99Ms": 86.4427,
+          "maxMs": 86.4427,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 246.19748420657857,
+          "samplesMs": [
+            44.8943,
+            44.695,
+            44.0587,
+            85.8069,
+            43.1373,
+            43.0655,
+            41.3927,
+            42.3265,
+            86.018,
+            42.5388,
+            42.7322,
+            85.1663,
+            43.286,
+            43.1152,
+            43.3419,
+            43.7449,
+            45.0499,
+            41.1442,
+            42.4206,
+            81.3945,
+            43.8328,
+            43.689,
+            42.0819,
+            45.3052,
+            42.9741,
+            44.4567,
+            44.7324,
+            42.8345,
+            43.235,
+            43.8722,
+            43.9942,
+            43.1462,
+            44.2839,
+            42.3418,
+            46.2221,
+            42.9675,
+            83.7678,
+            44.1171,
+            41.5775,
+            44.1887,
+            43.6922,
+            43.8764,
+            44.8038,
+            42.5727,
+            44.5461,
+            42.9328,
+            43.7994,
+            86.4427,
+            41.3742,
+            44.0593
+          ]
+        },
+        "qconnect": {
+          "iterations": 50,
+          "minMs": 1893.5995,
+          "medianMs": 1934.63415,
+          "meanMs": 2071.334726,
+          "p90Ms": 1980.9712,
+          "p99Ms": 3582.7143,
+          "maxMs": 3582.7143,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 5.570352000822991,
+          "samplesMs": [
+            1944.4051,
+            1935.0071,
+            3222.698,
+            1980.9712,
+            1941.8749,
+            1944.4866,
+            1909.3307,
+            1900.9603,
+            1931.9198,
+            3256.1832,
+            1953.3652,
+            1937.9381,
+            1913.6071,
+            1939.8109,
+            1924.3305,
+            1903.8442,
+            1925.0091,
+            1923.3964,
+            3339.4034,
+            1935.1551,
+            1917.2041,
+            1950.4358,
+            1897.5288,
+            1941.113,
+            1944.9555,
+            1895.1051,
+            1907.5929,
+            1938.9018,
+            1913.1476,
+            3385.2199,
+            1943.7042,
+            1954.7953,
+            1906.7438,
+            1930.3193,
+            1942.3299,
+            1952.935,
+            1914.7576,
+            1946.1576,
+            1915.2309,
+            1908.3401,
+            1945.5888,
+            1931.2307,
+            1903.3897,
+            3582.7143,
+            1910.9153,
+            1920.0049,
+            1934.2612,
+            1951.6456,
+            1893.5995,
+            1923.1712
+          ]
+        }
+      },
+      "medianRatioVsReference": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0130615795687565,
+        "xqdb-pandas": 2.7199496675573234,
+        "qconnect": 120.21587957497049
+      },
+      "medianRatioVsSameFrameXqdb": {
+        "xqdb-pyarrow": 1.0,
+        "xqdb-polars": 1.0,
+        "xqdb-pandas": 1.0,
+        "qconnect": 44.1978324117047
+      },
+      "unsupported": [
+        {
+          "subject": "kola",
+          "reason": "probe aborted during send.depth.identity: thread '<unnamed>' (38816) panicked at crates\\kola\\src\\serde6.rs:1852:42: | range end index 800040 out of range for slice of length 800000 | note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        }
+      ]
+    }
+  },
+  "memory": {
+    "trade": {
+      "xqdb-pyarrow": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 29396992
+        }
+      },
+      "xqdb-polars": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 6074368
+        }
+      },
+      "xqdb-pandas": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": -19914752
+        }
+      },
+      "kola": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 61386752
+        }
+      },
+      "qconnect": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 53161984
+        }
+      }
+    },
+    "wide": {
+      "xqdb-polars": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 259350528
+        }
+      },
+      "xqdb-pandas": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": -14966784
+        }
+      },
+      "kola": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 215584768
+        }
+      },
+      "qconnect": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 271540224
+        }
+      },
+      "xqdb-pyarrow": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 217698304
+        }
+      }
+    },
+    "depth": {
+      "xqdb-pandas": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": -231964672
+        }
+      },
+      "kola": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 40792064
+        }
+      },
+      "qconnect": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 2797072384
+        }
+      },
+      "xqdb-pyarrow": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": -217165824
+        }
+      },
+      "xqdb-polars": {
+        "retainedResults": 5,
+        "deltaBytes": {
+          "rss": 8585216
+        }
+      }
+    }
+  },
+  "order": {
+    "scalar": [
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ]
+    ],
+    "read.trade": [
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ]
+    ],
+    "send.trade": [
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ]
+    ],
+    "read.wide": [
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ]
+    ],
+    "send.wide": [
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ]
+    ],
+    "read.depth": [
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "kola",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "kola",
+        "qconnect"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "kola",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "kola"
+      ],
+      [
+        "xqdb-polars",
+        "kola",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "kola"
+      ],
+      [
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola"
+      ],
+      [
+        "kola",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "kola",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "kola",
+        "xqdb-pandas"
+      ]
+    ],
+    "send.depth": [
+      [
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "xqdb-polars"
+      ],
+      [
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pandas",
+        "xqdb-pyarrow"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pyarrow",
+        "xqdb-pandas",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "xqdb-polars",
+        "qconnect"
+      ],
+      [
+        "xqdb-polars",
+        "xqdb-pandas",
+        "xqdb-pyarrow",
+        "qconnect"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ],
+      [
+        "xqdb-pandas",
+        "qconnect",
+        "xqdb-pyarrow",
+        "xqdb-polars"
+      ],
+      [
+        "xqdb-pyarrow",
+        "qconnect",
+        "xqdb-polars",
+        "xqdb-pandas"
+      ]
+    ]
+  }
+}

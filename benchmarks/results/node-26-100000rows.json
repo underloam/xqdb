@@ -1,0 +1,3358 @@
+{
+  "fidelity": {
+    "xqdb": {
+      "int64Decoded": "9007199254740993",
+      "int64Exact": true,
+      "nanosecondTimestampDecoded": "1704164645123456789",
+      "nanosecondTimestampExact": true,
+      "nanosecondTimestampMode": "timed configuration",
+      "scalarDetail": "42",
+      "scalarExact": true,
+      "tables": {
+        "trade": {
+          "canonicalBytesMatchFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 100000,
+          "reencodedCanonicalBytes": 11000178,
+          "sendComparable": true,
+          "roundTrip": "identical"
+        },
+        "wide": {
+          "canonicalBytesMatchFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 100000,
+          "reencodedCanonicalBytes": 51000768,
+          "sendComparable": true,
+          "roundTrip": "identical"
+        },
+        "depth": {
+          "canonicalBytesMatchFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 100000,
+          "reencodedCanonicalBytes": 11300077,
+          "sendComparable": true,
+          "roundTrip": "identical"
+        }
+      }
+    },
+    "jkdb": {
+      "int64Decoded": "9007199254740993",
+      "int64Exact": true,
+      "nanosecondTimestampDecoded": "1704164645123456789",
+      "nanosecondTimestampExact": true,
+      "nanosecondTimestampMode": "separate includeNanosecond:true connection; timed configuration uses includeNanosecond:false",
+      "scalarDetail": "42",
+      "scalarExact": true,
+      "tables": {
+        "trade": {
+          "canonicalBytesMatchFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 100000,
+          "reencodedCanonicalBytes": 11000178,
+          "sendComparable": true,
+          "roundTrip": "identical"
+        },
+        "wide": {
+          "canonicalBytesMatchFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 100000,
+          "reencodedCanonicalBytes": 51000768,
+          "sendComparable": true,
+          "roundTrip": "identical"
+        },
+        "depth": {
+          "canonicalBytesMatchFixture": true,
+          "reencodesToIdenticalQValue": true,
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 100000,
+          "reencodedCanonicalBytes": 11300077,
+          "sendComparable": true,
+          "roundTrip": "identical"
+        }
+      }
+    },
+    "node-q": {
+      "int64Decoded": "9007199254740992",
+      "int64Exact": false,
+      "nanosecondTimestampDecoded": "1704164645123000000",
+      "nanosecondTimestampExact": false,
+      "nanosecondTimestampMode": "timed configuration",
+      "scalarDetail": "42",
+      "scalarExact": true,
+      "tables": {
+        "trade": {
+          "canonicalBytesMatchFixture": false,
+          "reencodesToIdenticalQValue": false,
+          "shape": {
+            "rows": 100000,
+            "columns": 14
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 14,
+          "reencodedCanonicalBytes": 11500176,
+          "sendComparable": false,
+          "sendExcludedBecause": "decoded value does not re-encode to a q-identical value",
+          "roundTrip": "differs"
+        },
+        "wide": {
+          "canonicalBytesMatchFixture": false,
+          "reencodesToIdenticalQValue": false,
+          "shape": {
+            "rows": 100000,
+            "columns": 64
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 64,
+          "reencodedCanonicalBytes": 51500766,
+          "sendComparable": false,
+          "sendExcludedBecause": "decoded value does not re-encode to a q-identical value",
+          "roundTrip": "differs"
+        },
+        "depth": {
+          "canonicalBytesMatchFixture": false,
+          "reencodesToIdenticalQValue": false,
+          "shape": {
+            "rows": 100000,
+            "columns": 5
+          },
+          "shapeMatchesFixture": true,
+          "reencodedRows": 5,
+          "reencodedCanonicalBytes": 11800075,
+          "sendComparable": false,
+          "sendExcludedBecause": "decoded value does not re-encode to a q-identical value",
+          "roundTrip": "differs"
+        }
+      }
+    }
+  },
+  "fixture": {
+    "connection": "loopback",
+    "qVersion": 5,
+    "rows": 100000,
+    "seed": 42,
+    "tables": {
+      "trade": {
+        "canonicalBytes": 11000178,
+        "columns": 14
+      },
+      "wide": {
+        "canonicalBytes": 51000768,
+        "columns": 64
+      },
+      "depth": {
+        "canonicalBytes": 11300077,
+        "columns": 5
+      }
+    }
+  },
+  "generatedAt": "2026-09-18T00:16:47.933Z",
+  "memory": {
+    "trade": {
+      "xqdb": {
+        "deltaBytes": {
+          "arrayBuffers": -17,
+          "external": 32304464,
+          "heapUsed": -59957896,
+          "rss": 72507392
+        },
+        "retainedResults": 5
+      },
+      "jkdb": {
+        "deltaBytes": {
+          "arrayBuffers": 189417555,
+          "external": 188156491,
+          "heapUsed": 220017584,
+          "rss": 312283136
+        },
+        "retainedResults": 5
+      },
+      "node-q": {
+        "deltaBytes": {
+          "arrayBuffers": 218601498,
+          "external": 228226954,
+          "heapUsed": 208006936,
+          "rss": 285687808
+        },
+        "retainedResults": 5
+      }
+    },
+    "wide": {
+      "jkdb": {
+        "deltaBytes": {
+          "arrayBuffers": 39987412,
+          "external": 39987412,
+          "heapUsed": 820043280,
+          "rss": 703197184
+        },
+        "retainedResults": 5
+      },
+      "node-q": {
+        "deltaBytes": {
+          "arrayBuffers": -4280,
+          "external": 50949944,
+          "heapUsed": 809634624,
+          "rss": 321347584
+        },
+        "retainedResults": 5
+      },
+      "xqdb": {
+        "deltaBytes": {
+          "arrayBuffers": -46544,
+          "external": 255487696,
+          "heapUsed": 393448,
+          "rss": 356040704
+        },
+        "retainedResults": 5
+      }
+    },
+    "depth": {
+      "node-q": {
+        "deltaBytes": {
+          "arrayBuffers": 143145434,
+          "external": 102532538,
+          "heapUsed": 249085256,
+          "rss": 171024384
+        },
+        "retainedResults": 5
+      },
+      "xqdb": {
+        "deltaBytes": {
+          "arrayBuffers": -19693,
+          "external": 58006840,
+          "heapUsed": 105736,
+          "rss": -357998592
+        },
+        "retainedResults": 5
+      },
+      "jkdb": {
+        "deltaBytes": {
+          "arrayBuffers": 38335802,
+          "external": 37562258,
+          "heapUsed": 299970424,
+          "rss": 66600960
+        },
+        "retainedResults": 5
+      }
+    }
+  },
+  "method": {
+    "auditData": "raw samplesMs and per-round subject order are retained by default; --no-samples is an explicit local-only size optimization",
+    "clock": "process.hrtime.bigint",
+    "excludedSubjects": {
+      "@kxsystems/*": "KX publishes no Node.js q client on npm"
+    },
+    "iterationsPerSubjectPerOperation": 50,
+    "memory": "process-wide RSS/heap delta around retained decoded results with forced GC at both snapshots; a noisy diagnostic, not a library footprint",
+    "orderSeed": 42,
+    "payloadBytes": "server-side `count -8!table` for the fixture table: a logical payload size shared by all subjects, not observed wire bytes",
+    "percentiles": "nearest-rank on raw durations",
+    "rawSamplesRetained": true,
+    "readComparability": "every subject decodes an identical server byte stream into its documented representation, so all are ranked; timed validation proves the decoded row count, not table content fidelity. Exact int64 and nanosecond atom probes are recorded in `fidelity`; `roundTripStates` separately distinguishes identical, differs, resized, and unverified decode-then-encode outcomes without assigning an encoder failure to the decoder",
+    "referenceSubject": "xqdb",
+    "retainedResultsPerMemoryProbe": 5,
+    "scalarComparability": "value-exact latency floor; a subject that cannot return the exact value is listed in `unsupported` instead of being ranked",
+    "scheduling": "one request in flight per subject; every round runs each subject once in a deterministic order reshuffled from `orderSeed`, so positions and predecessors both vary; a cyclic rotation would pin every subject behind the same neighbour in every round",
+    "sendComparability": "sends are compared only for subjects whose decoded value re-encodes to a q-identical value of the same canonical size; others are listed in `unsupported` with no samples, throughput, or ratio",
+    "throughput": "payloadBytes divided by the median duration",
+    "untimedCorrectnessChecks": "int64 and nanosecond-timestamp exactness are reported by the preflight, not timed: timing a wrong decode against a right one would compare different work",
+    "warmupsPerSubjectPerOperation": 3
+  },
+  "operations": {
+    "scalar": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 0.9781080217321829,
+        "node-q": 1.0178970917225953
+      },
+      "payloadBytes": null,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 0.5564,
+          "meanMs": 0.32249,
+          "medianMs": 0.31289999999999996,
+          "minMs": 0.2821,
+          "p90Ms": 0.3352,
+          "p99Ms": 0.5564,
+          "samplesMs": [
+            0.3733,
+            0.5564,
+            0.4288,
+            0.3329,
+            0.3352,
+            0.323,
+            0.3579,
+            0.3127,
+            0.4246,
+            0.3276,
+            0.3288,
+            0.3226,
+            0.3157,
+            0.3061,
+            0.3101,
+            0.3253,
+            0.3042,
+            0.3143,
+            0.2865,
+            0.3131,
+            0.3143,
+            0.2995,
+            0.2902,
+            0.3134,
+            0.3182,
+            0.3288,
+            0.3083,
+            0.3032,
+            0.3121,
+            0.2993,
+            0.3032,
+            0.2916,
+            0.2821,
+            0.3274,
+            0.2944,
+            0.2924,
+            0.3211,
+            0.3272,
+            0.3048,
+            0.2992,
+            0.3238,
+            0.3089,
+            0.3086,
+            0.2869,
+            0.3044,
+            0.3272,
+            0.306,
+            0.298,
+            0.3107,
+            0.3202
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 0.4021,
+          "meanMs": 0.30917,
+          "medianMs": 0.30605,
+          "minMs": 0.277,
+          "p90Ms": 0.3373,
+          "p99Ms": 0.4021,
+          "samplesMs": [
+            0.3339,
+            0.4021,
+            0.3452,
+            0.3138,
+            0.3119,
+            0.3345,
+            0.3168,
+            0.3034,
+            0.3126,
+            0.3239,
+            0.2998,
+            0.3104,
+            0.3111,
+            0.3115,
+            0.2963,
+            0.2973,
+            0.3474,
+            0.3373,
+            0.2787,
+            0.3015,
+            0.2972,
+            0.2924,
+            0.3075,
+            0.2941,
+            0.3068,
+            0.2908,
+            0.3061,
+            0.306,
+            0.3076,
+            0.3093,
+            0.3026,
+            0.2963,
+            0.346,
+            0.2872,
+            0.2822,
+            0.2898,
+            0.2924,
+            0.3207,
+            0.2879,
+            0.2984,
+            0.2851,
+            0.3029,
+            0.3465,
+            0.3168,
+            0.2976,
+            0.312,
+            0.2894,
+            0.2941,
+            0.3264,
+            0.277
+          ]
+        },
+        "node-q": {
+          "iterations": 50,
+          "maxMs": 0.4853,
+          "meanMs": 0.332176,
+          "medianMs": 0.3185,
+          "minMs": 0.3046,
+          "p90Ms": 0.3777,
+          "p99Ms": 0.4853,
+          "samplesMs": [
+            0.3581,
+            0.4853,
+            0.3835,
+            0.3743,
+            0.4091,
+            0.3777,
+            0.3844,
+            0.3299,
+            0.3397,
+            0.3289,
+            0.3136,
+            0.3265,
+            0.3457,
+            0.334,
+            0.3335,
+            0.3404,
+            0.3182,
+            0.3182,
+            0.3207,
+            0.3173,
+            0.3293,
+            0.3112,
+            0.3119,
+            0.3211,
+            0.3079,
+            0.3113,
+            0.3171,
+            0.3216,
+            0.3126,
+            0.3106,
+            0.314,
+            0.3161,
+            0.3323,
+            0.3573,
+            0.3202,
+            0.3151,
+            0.3165,
+            0.3105,
+            0.3163,
+            0.3106,
+            0.3047,
+            0.3863,
+            0.3125,
+            0.3113,
+            0.3188,
+            0.3046,
+            0.3103,
+            0.3139,
+            0.3108,
+            0.3331
+          ]
+        }
+      },
+      "unsupported": []
+    },
+    "read.trade": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 11.19943226152689,
+        "node-q": 11.53290446952819
+      },
+      "payloadBytes": 11000178,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 19.5895,
+          "meanMs": 14.519094,
+          "medianMs": 14.16145,
+          "minMs": 11.2628,
+          "p90Ms": 16.4121,
+          "p99Ms": 19.5895,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 740.7848231993949,
+          "samplesMs": [
+            15.9629,
+            13.8538,
+            14.2081,
+            13.8768,
+            16.3122,
+            15.317,
+            12.9711,
+            13.1642,
+            16.2849,
+            12.8133,
+            16.6588,
+            12.3719,
+            12.4222,
+            16.4194,
+            14.079,
+            13.0377,
+            12.9434,
+            15.186,
+            12.1668,
+            12.9012,
+            16.1795,
+            16.4019,
+            13.0377,
+            16.8925,
+            15.5907,
+            16.0459,
+            14.5726,
+            11.2628,
+            15.9923,
+            13.5954,
+            16.1776,
+            19.5895,
+            15.3666,
+            13.1886,
+            15.419,
+            12.6317,
+            14.0983,
+            15.454,
+            14.3964,
+            12.1027,
+            16.2333,
+            13.3738,
+            12.7625,
+            13.5749,
+            16.8442,
+            13.3839,
+            14.1148,
+            16.4121,
+            15.2036,
+            13.1052
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 213.9677,
+          "meanMs": 161.339914,
+          "medianMs": 158.6002,
+          "minMs": 137.2158,
+          "p90Ms": 178.4442,
+          "p99Ms": 213.9677,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 66.14485501592729,
+          "samplesMs": [
+            154.6368,
+            154.8817,
+            152.4545,
+            146.2357,
+            174.601,
+            153.3653,
+            168.6723,
+            156.1635,
+            164.5535,
+            156.8644,
+            162.6085,
+            175.2655,
+            168.2923,
+            161.8398,
+            154.4268,
+            137.2158,
+            213.9677,
+            158.8734,
+            172.0397,
+            151.6859,
+            178.4442,
+            161.3313,
+            157.6467,
+            189.3544,
+            151.762,
+            149.5849,
+            159.0626,
+            184.8939,
+            171.4769,
+            187.2823,
+            168.1086,
+            190.3728,
+            138.82,
+            164.3073,
+            173.8367,
+            138.9295,
+            167.5667,
+            172.7879,
+            143.4982,
+            156.4172,
+            162.8319,
+            139.5143,
+            159.0233,
+            158.2883,
+            138.1985,
+            158.327,
+            155.0685,
+            142.5434,
+            154.2377,
+            154.8346
+          ]
+        },
+        "node-q": {
+          "iterations": 50,
+          "maxMs": 189.9951,
+          "meanMs": 166.900124,
+          "medianMs": 163.32265,
+          "minMs": 146.4133,
+          "p90Ms": 184.5188,
+          "p99Ms": 189.9951,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 64.23228642504313,
+          "samplesMs": [
+            148.5879,
+            160.1806,
+            178.6339,
+            160.615,
+            189.9951,
+            184.5188,
+            156.8457,
+            182.9708,
+            161.4923,
+            150.8576,
+            175.4765,
+            169.2811,
+            148.5475,
+            173.1411,
+            185.7851,
+            152.6771,
+            161.7141,
+            181.5703,
+            150.7287,
+            178.4345,
+            151.6661,
+            162.0303,
+            163.146,
+            147.154,
+            159.2039,
+            184.5548,
+            182.5794,
+            156.141,
+            160.962,
+            149.1921,
+            163.4756,
+            182.1769,
+            159.2152,
+            162.8178,
+            188.0219,
+            174.5818,
+            163.0689,
+            179.5464,
+            146.4133,
+            184.8231,
+            167.3844,
+            163.1697,
+            170.1716,
+            170.2029,
+            160.8919,
+            165.0204,
+            169.5019,
+            159.8517,
+            170.1901,
+            175.7974
+          ]
+        }
+      },
+      "readValidation": "decoded row count only; table content fidelity is not inferred",
+      "roundTripReasons": {
+        "node-q": "decoded value does not re-encode to a q-identical value"
+      },
+      "roundTripStates": {
+        "xqdb": "identical",
+        "jkdb": "identical",
+        "node-q": "differs"
+      },
+      "roundTripUnverifiedReasons": {},
+      "roundTripUnverifiedSubjects": []
+    },
+    "send.trade": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 2.235637733319501
+      },
+      "payloadBytes": 11000178,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 63.386,
+          "meanMs": 28.950234,
+          "medianMs": 18.79665,
+          "minMs": 17.1927,
+          "p90Ms": 61.5689,
+          "p99Ms": 63.386,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 558.1094096286877,
+          "samplesMs": [
+            18.498,
+            18.2607,
+            17.9378,
+            18.3958,
+            18.0836,
+            18.1828,
+            24.7471,
+            20.8718,
+            19.1413,
+            60.6982,
+            63.386,
+            17.9664,
+            20.2069,
+            59.173,
+            18.3632,
+            19.1466,
+            18.5168,
+            18.0518,
+            17.6716,
+            61.5689,
+            61.8754,
+            18.8694,
+            17.1927,
+            18.1277,
+            58.6514,
+            18.7982,
+            20.1784,
+            18.7933,
+            18.7951,
+            19.257,
+            18.1555,
+            61.8794,
+            60.0735,
+            61.9634,
+            18.3335,
+            18.9727,
+            18.6649,
+            17.9047,
+            18.0099,
+            19.7981,
+            59.4357,
+            18.3536,
+            19.0031,
+            18.4911,
+            19.0013,
+            18.7627,
+            18.5645,
+            62.6658,
+            18.5228,
+            61.5486
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 97.8461,
+          "meanMs": 54.519722,
+          "medianMs": 42.0225,
+          "minMs": 35.5268,
+          "p90Ms": 82.9194,
+          "p99Ms": 97.8461,
+          "payloadBytes": 11000178,
+          "medianMibPerSecond": 249.64214966974998,
+          "samplesMs": [
+            35.5888,
+            77.4226,
+            76.2071,
+            75.4019,
+            35.5268,
+            36.2532,
+            37.1152,
+            78.6419,
+            76.487,
+            36.2481,
+            35.9422,
+            45.0165,
+            38.7337,
+            82.8591,
+            44.1454,
+            41.4326,
+            41.534,
+            41.4452,
+            41.8918,
+            42.0242,
+            41.8246,
+            41.5827,
+            42.1835,
+            41.3761,
+            41.5191,
+            66.5636,
+            60.9579,
+            83.8259,
+            41.8414,
+            41.5828,
+            81.4997,
+            62.0367,
+            41.8801,
+            84.0569,
+            40.7684,
+            84.6515,
+            41.7964,
+            41.6012,
+            82.9194,
+            41.7819,
+            82.7891,
+            97.8461,
+            84.7728,
+            42.1425,
+            41.384,
+            82.9169,
+            42.1701,
+            41.7091,
+            42.0676,
+            42.0208
+          ]
+        }
+      },
+      "unsupported": [
+        {
+          "reason": "decoded value does not re-encode to a q-identical value",
+          "subject": "node-q"
+        }
+      ]
+    },
+    "read.wide": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 48.77351781789754,
+        "node-q": 49.679668716904885
+      },
+      "payloadBytes": 51000768,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 59.0716,
+          "meanMs": 53.515438,
+          "medianMs": 54.2376,
+          "minMs": 43.33,
+          "p90Ms": 57.7134,
+          "p99Ms": 59.0716,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 896.7602283027595,
+          "samplesMs": [
+            55.1072,
+            55.7277,
+            57.5347,
+            53.5232,
+            54.2932,
+            46.0893,
+            52.9439,
+            43.33,
+            57.3872,
+            56.5636,
+            57.4336,
+            49.3434,
+            55.0406,
+            58.9525,
+            55.6498,
+            55.687,
+            53.4826,
+            58.6054,
+            44.7388,
+            58.9961,
+            54.182,
+            53.6976,
+            56.3095,
+            54.3296,
+            51.3952,
+            57.7134,
+            53.536,
+            44.8803,
+            53.4697,
+            56.3908,
+            55.6207,
+            51.4114,
+            44.3499,
+            57.9767,
+            51.3173,
+            55.2201,
+            46.1329,
+            50.3693,
+            53.1606,
+            55.2787,
+            59.0716,
+            43.8002,
+            55.3345,
+            53.6275,
+            56.7817,
+            52.7402,
+            53.1956,
+            56.4394,
+            54.1706,
+            53.4391
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 2707.8173,
+          "meanMs": 2594.143384,
+          "medianMs": 2645.35855,
+          "minMs": 2465.079,
+          "p90Ms": 2697.0975,
+          "p99Ms": 2707.8173,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 18.38621178917079,
+          "samplesMs": [
+            2465.079,
+            2494.3182,
+            2482.581,
+            2609.7449,
+            2647.4634,
+            2514.4499,
+            2707.8134,
+            2488.9318,
+            2653.2887,
+            2697.0975,
+            2675.7478,
+            2664.2807,
+            2651.9948,
+            2643.2537,
+            2495.0313,
+            2498.9887,
+            2650.3596,
+            2699.3578,
+            2671.407,
+            2483.4182,
+            2667.8781,
+            2669.7066,
+            2671.0186,
+            2651.7932,
+            2497.4235,
+            2526.1524,
+            2661.9965,
+            2651.4434,
+            2700.0244,
+            2657.3582,
+            2672.9745,
+            2665.3158,
+            2472.6288,
+            2617.4526,
+            2657.824,
+            2529.5921,
+            2623.5671,
+            2678.2603,
+            2472.432,
+            2511.3388,
+            2701.1966,
+            2514.6622,
+            2528.5448,
+            2502.5927,
+            2488.2518,
+            2707.8173,
+            2497.2513,
+            2658.605,
+            2476.1012,
+            2481.358
+          ]
+        },
+        "node-q": {
+          "iterations": 50,
+          "maxMs": 2769.1946,
+          "meanMs": 2664.010272,
+          "medianMs": 2694.5060000000003,
+          "minMs": 2550.9089,
+          "p90Ms": 2737.6581,
+          "p99Ms": 2769.1946,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 18.05084960233666,
+          "samplesMs": [
+            2690.8301,
+            2567.3954,
+            2718.9038,
+            2593.4312,
+            2706.5493,
+            2729.4804,
+            2724.5474,
+            2713.2379,
+            2596.5601,
+            2568.2223,
+            2709.3961,
+            2599.4492,
+            2742.3553,
+            2622.5456,
+            2689.6354,
+            2613.142,
+            2589.6304,
+            2695.2689,
+            2584.8848,
+            2737.6581,
+            2550.9089,
+            2581.5391,
+            2633.1642,
+            2554.8388,
+            2769.1946,
+            2714.1836,
+            2735.8013,
+            2559.8394,
+            2597.5806,
+            2557.2609,
+            2554.1585,
+            2767.0134,
+            2716.6592,
+            2567.9972,
+            2757.8298,
+            2711.8208,
+            2603.7309,
+            2734.2867,
+            2611.4425,
+            2714.1605,
+            2717.2357,
+            2737.456,
+            2740.4749,
+            2720.078,
+            2693.7431,
+            2735.6033,
+            2593.0048,
+            2730.4286,
+            2617.3226,
+            2728.632
+          ]
+        }
+      },
+      "readValidation": "decoded row count only; table content fidelity is not inferred",
+      "roundTripReasons": {
+        "node-q": "decoded value does not re-encode to a q-identical value"
+      },
+      "roundTripStates": {
+        "xqdb": "identical",
+        "jkdb": "identical",
+        "node-q": "differs"
+      },
+      "roundTripUnverifiedReasons": {},
+      "roundTripUnverifiedSubjects": []
+    },
+    "send.wide": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 1.7856006759399599
+      },
+      "payloadBytes": 51000768,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 111.2034,
+          "meanMs": 75.72236,
+          "medianMs": 65.4496,
+          "minMs": 60.5239,
+          "p90Ms": 107.0675,
+          "p99Ms": 111.2034,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 743.1385762264971,
+          "samplesMs": [
+            108.0274,
+            64.5628,
+            69.5393,
+            111.2034,
+            64.6514,
+            63.5851,
+            65.5542,
+            63.809,
+            70.9404,
+            65.5492,
+            63.327,
+            65.1238,
+            60.5239,
+            99.4745,
+            69.0633,
+            65.2345,
+            64.7015,
+            64.1246,
+            64.5892,
+            64.7996,
+            72.5779,
+            67.2498,
+            63.9974,
+            63.2895,
+            103.9753,
+            64.1479,
+            75.0121,
+            64.1621,
+            64.5105,
+            67.0627,
+            104.534,
+            109.5477,
+            70.1803,
+            63.9489,
+            107.7296,
+            64.2034,
+            64.778,
+            70.6147,
+            104.9492,
+            65.0069,
+            62.7847,
+            106.0507,
+            105.7399,
+            71.6021,
+            65.35,
+            63.4383,
+            108.9757,
+            107.0675,
+            71.6297,
+            63.6174
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 163.7733,
+          "meanMs": 122.15136,
+          "medianMs": 116.86685,
+          "minMs": 105.3819,
+          "p90Ms": 143.6973,
+          "p99Ms": 163.7733,
+          "payloadBytes": 51000768,
+          "medianMibPerSecond": 416.1840809313655,
+          "samplesMs": [
+            143.6973,
+            113.3736,
+            117.6327,
+            111.8696,
+            108.4067,
+            117.1551,
+            109.8866,
+            121.6826,
+            105.3819,
+            118.321,
+            113.034,
+            111.3319,
+            109.542,
+            133.7827,
+            155.4789,
+            117.9203,
+            130.9145,
+            140.3896,
+            124.4046,
+            131.3602,
+            121.3432,
+            122.6429,
+            115.2759,
+            116.2827,
+            114.2502,
+            117.754,
+            111.9848,
+            127.6502,
+            113.7328,
+            158.2859,
+            115.957,
+            106.1047,
+            121.3918,
+            115.5113,
+            108.9801,
+            163.7733,
+            163.0232,
+            128.3267,
+            109.92,
+            117.1419,
+            115.0535,
+            110.2863,
+            121.0648,
+            112.9235,
+            110.0593,
+            114.4073,
+            124.32,
+            116.5918,
+            163.743,
+            114.2201
+          ]
+        }
+      },
+      "unsupported": [
+        {
+          "reason": "decoded value does not re-encode to a q-identical value",
+          "subject": "node-q"
+        }
+      ]
+    },
+    "read.depth": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 11.60040463357999,
+        "node-q": 11.154663960351165
+      },
+      "payloadBytes": 11300077,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 22.5918,
+          "meanMs": 16.20593,
+          "medianMs": 15.22365,
+          "minMs": 12.1226,
+          "p90Ms": 19.2606,
+          "p99Ms": 22.5918,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 707.8849821372003,
+          "samplesMs": [
+            22.5918,
+            15.9275,
+            17.297,
+            16.8843,
+            19.4564,
+            13.2242,
+            14.0419,
+            12.4441,
+            19.1012,
+            14.4891,
+            19.2606,
+            13.6455,
+            14.0673,
+            17.9886,
+            13.4951,
+            17.5696,
+            14.1534,
+            18.0015,
+            13.3789,
+            13.805,
+            13.8375,
+            18.3575,
+            17.1734,
+            13.6904,
+            20.3475,
+            17.7567,
+            14.078,
+            12.1226,
+            22.4477,
+            14.2455,
+            16.6201,
+            18.7329,
+            13.7106,
+            14.899,
+            19.5794,
+            14.3901,
+            13.5241,
+            18.7648,
+            14.934,
+            18.9357,
+            18.8081,
+            13.8039,
+            14.852,
+            14.1254,
+            19.028,
+            14.338,
+            17.6619,
+            18.2614,
+            15.2201,
+            15.2272
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 200.1509,
+          "meanMs": 177.223444,
+          "medianMs": 176.6005,
+          "minMs": 157.6962,
+          "p90Ms": 187.4113,
+          "p99Ms": 200.1509,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 61.022438828389426,
+          "samplesMs": [
+            172.0729,
+            186.9191,
+            174.7953,
+            166.559,
+            176.311,
+            188.6344,
+            170.252,
+            174.5516,
+            181.4193,
+            164.9582,
+            181.693,
+            176.89,
+            200.1509,
+            177.6118,
+            178.6434,
+            170.0735,
+            187.4113,
+            173.9841,
+            177.1558,
+            172.9455,
+            157.6962,
+            193.6917,
+            195.4216,
+            186.5404,
+            175.8106,
+            174.605,
+            177.9072,
+            182.0635,
+            171.2382,
+            174.5954,
+            186.5958,
+            163.7933,
+            174.1079,
+            175.8859,
+            171.9338,
+            173.0074,
+            166.3484,
+            194.297,
+            179.489,
+            160.8128,
+            174.3659,
+            178.4613,
+            172.0555,
+            178.9198,
+            178.3,
+            179.1742,
+            177.9984,
+            177.8192,
+            172.7394,
+            182.4653
+          ]
+        },
+        "node-q": {
+          "iterations": 50,
+          "maxMs": 199.4114,
+          "meanMs": 170.833316,
+          "medianMs": 169.81470000000002,
+          "minMs": 154.558,
+          "p90Ms": 182.0121,
+          "p99Ms": 199.4114,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 63.460897132656875,
+          "samplesMs": [
+            169.4031,
+            163.2998,
+            171.9899,
+            169.5522,
+            162.0705,
+            173.318,
+            158.8828,
+            172.2093,
+            169.8428,
+            163.7639,
+            171.166,
+            192.9864,
+            167.1378,
+            172.6224,
+            166.1732,
+            166.4116,
+            171.7701,
+            154.558,
+            185.8384,
+            175.4041,
+            166.255,
+            171.8843,
+            163.688,
+            169.7866,
+            169.0087,
+            158.4844,
+            165.1313,
+            178.0491,
+            160.8079,
+            172.0019,
+            187.9966,
+            164.0228,
+            174.2157,
+            167.7838,
+            171.03,
+            175.0912,
+            199.4114,
+            169.8687,
+            165.387,
+            175.327,
+            171.9519,
+            173.6949,
+            176.8881,
+            182.0121,
+            162.9697,
+            165.7711,
+            167.4488,
+            156.7071,
+            168.889,
+            191.7014
+          ]
+        }
+      },
+      "readValidation": "decoded row count only; table content fidelity is not inferred",
+      "roundTripReasons": {
+        "node-q": "decoded value does not re-encode to a q-identical value"
+      },
+      "roundTripStates": {
+        "xqdb": "identical",
+        "jkdb": "identical",
+        "node-q": "differs"
+      },
+      "roundTripUnverifiedReasons": {},
+      "roundTripUnverifiedSubjects": []
+    },
+    "send.depth": {
+      "medianRatioVsXqdb": {
+        "xqdb": 1,
+        "jkdb": 2.5196344935729464
+      },
+      "payloadBytes": 11300077,
+      "subjects": {
+        "xqdb": {
+          "iterations": 50,
+          "maxMs": 63.9928,
+          "meanMs": 23.649088,
+          "medianMs": 19.3868,
+          "minMs": 17.6526,
+          "p90Ms": 20.7629,
+          "p99Ms": 63.9928,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 555.872717947933,
+          "samplesMs": [
+            19.5162,
+            20.441,
+            19.7069,
+            63.9928,
+            19.6803,
+            19.1217,
+            19.4382,
+            19.9992,
+            19.0302,
+            20.0396,
+            19.0654,
+            18.9223,
+            20.7629,
+            18.9574,
+            19.2511,
+            19.138,
+            19.0548,
+            19.1599,
+            19.924,
+            19.2736,
+            19.541,
+            20.0602,
+            19.1748,
+            19.315,
+            18.9022,
+            60.7254,
+            62.0615,
+            60.3766,
+            18.8562,
+            19.3563,
+            19.7549,
+            19.4026,
+            19.2375,
+            19.62,
+            19.6023,
+            18.0688,
+            17.6526,
+            19.8458,
+            20.1237,
+            19.371,
+            20.4609,
+            19.6582,
+            19.0364,
+            61.9824,
+            19.3091,
+            19.7189,
+            19.2479,
+            19.0583,
+            19.1829,
+            19.2755
+          ]
+        },
+        "jkdb": {
+          "iterations": 50,
+          "maxMs": 98.9914,
+          "meanMs": 52.506808,
+          "medianMs": 48.84765,
+          "minMs": 42.5329,
+          "p90Ms": 58.6173,
+          "p99Ms": 98.9914,
+          "payloadBytes": 11300077,
+          "medianMibPerSecond": 220.6164105809182,
+          "samplesMs": [
+            42.5329,
+            45.9519,
+            45.9273,
+            43.6733,
+            43.264,
+            47.2122,
+            89.9371,
+            88.9099,
+            47.9999,
+            48.324,
+            47.8262,
+            47.9646,
+            47.6673,
+            48.4676,
+            49.2986,
+            48.6964,
+            98.9914,
+            47.1213,
+            48.8827,
+            49.1341,
+            49.6168,
+            48.5867,
+            49.662,
+            48.8126,
+            49.7358,
+            49.3134,
+            48.994,
+            47.9919,
+            49.8237,
+            50.9148,
+            48.9853,
+            49.2641,
+            49.3167,
+            51.9565,
+            44.5352,
+            47.0231,
+            49.4486,
+            49.0977,
+            48.7112,
+            48.4258,
+            53.2891,
+            48.6321,
+            48.8851,
+            48.0884,
+            92.6549,
+            47.2638,
+            47.8065,
+            49.6675,
+            72.4371,
+            58.6173
+          ]
+        }
+      },
+      "unsupported": [
+        {
+          "reason": "decoded value does not re-encode to a q-identical value",
+          "subject": "node-q"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "buildProvenance": {
+      "statement": "source-state and loaded-artifact digests are recorded independently; the harness does not claim an attested build link between them",
+      "status": "not-proven"
+    },
+    "loadedArtifacts": {
+      "javascriptBuild": {
+        "contentDigest": {
+          "algorithm": "sha256",
+          "framing": "sorted package-relative UTF-8 path framed by uint64-be length, then path, uint64-be content length, then content",
+          "value": "73b6d07879208a9e121c3e7901f54f96dba38215f6c40f784588bc53726f225f"
+        },
+        "files": [
+          {
+            "bytes": 581,
+            "path": "dist/conversion.d.ts",
+            "sha256": "e2d96256ea6f18ffa04ad499a5a93e430543bb3c9ee73a3fdb3b8427fccfac85"
+          },
+          {
+            "bytes": 11808,
+            "path": "dist/conversion.js",
+            "sha256": "271ff35fbe114ae87783fc5a0e476f765a1563de07f4346d14c2576be7942f18"
+          },
+          {
+            "bytes": 825,
+            "path": "dist/errors.d.ts",
+            "sha256": "988b1e5f09d106bfeb25ab257cf6c5db45b5f15914960b1ac5f47c50be9bb486"
+          },
+          {
+            "bytes": 1398,
+            "path": "dist/errors.js",
+            "sha256": "88f60bdffa08706a37d481653d3745618484c3db3a437b72cc1cabdafd011cbf"
+          },
+          {
+            "bytes": 1246,
+            "path": "dist/helpers.d.ts",
+            "sha256": "313eb73b9a6fa59c0af63a98a8f6acd03f19d5f993c130b39cb6843d17695faf"
+          },
+          {
+            "bytes": 3588,
+            "path": "dist/helpers.js",
+            "sha256": "7cc600358d4f655c094626e91b8f4c286af3df22a8d60fa9699972696aaadba7"
+          },
+          {
+            "bytes": 544,
+            "path": "dist/index.d.ts",
+            "sha256": "19efd5ae953ebb893022c98e96c75b73496ebfd7227fe6b10b933a35438cac2c"
+          },
+          {
+            "bytes": 354,
+            "path": "dist/index.js",
+            "sha256": "4189bf129f68e4a4a86a453691c3b58172144899a3eb91117f92bb9c83885a7d"
+          },
+          {
+            "bytes": 3287,
+            "path": "dist/native-contract.d.ts",
+            "sha256": "3a9775a65cc10d098364dfae00fcc4b31c53ae7d6309a0e184c0de90eb4c57a1"
+          },
+          {
+            "bytes": 11,
+            "path": "dist/native-contract.js",
+            "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+          },
+          {
+            "bytes": 186,
+            "path": "dist/native-loader.d.ts",
+            "sha256": "7cd97a6703b5030479697988423b54f2341c84aa21803a910ba09fcbc5c53bee"
+          },
+          {
+            "bytes": 2098,
+            "path": "dist/native-loader.js",
+            "sha256": "73f2895701cc834f13240c848a718b592f21ce583308d06346e7a4c56b3f6f8f"
+          },
+          {
+            "bytes": 1035,
+            "path": "dist/q.d.ts",
+            "sha256": "4367805afe836c0584a4cd9c985597a2c22c4f44c5d9095e73246370a7fcfdc6"
+          },
+          {
+            "bytes": 14128,
+            "path": "dist/q.js",
+            "sha256": "98f62e1d6f86ee9e3ed8df18a988c8ab8c0a8d907633b6acf2f1265d8a46229e"
+          },
+          {
+            "bytes": 2797,
+            "path": "dist/qvalue.d.ts",
+            "sha256": "10145ad5a4f71934eb77c03946d0da1bb7b6964510f6c6c58781ce323fb467bb"
+          },
+          {
+            "bytes": 10744,
+            "path": "dist/qvalue.js",
+            "sha256": "1c20f25c1437f0ea439573d77f19e40d343aba321d74ba322ce72d13f5c3108b"
+          },
+          {
+            "bytes": 4319,
+            "path": "dist/types.d.ts",
+            "sha256": "65a6485eed97a60a1ab6be93f89080a97803dd82657515b889f9872fd02941ee"
+          },
+          {
+            "bytes": 4960,
+            "path": "dist/types.js",
+            "sha256": "f5364a227d785e81461095cc4f2a054e19811862d2567273320ab54e1e958e47"
+          },
+          {
+            "bytes": 29064,
+            "path": "native.cjs",
+            "sha256": "c34644dd5415537080ae7d58506c670c2fa6b0b82f7fd5b9b30238bbc6dad340"
+          },
+          {
+            "bytes": 2493,
+            "path": "package.json",
+            "sha256": "fb8a664277dfbecf39d55e2a887cf49e3edf4e75663e3b7235b6be19f9a844ed"
+          }
+        ]
+      },
+      "loadedNativeAddon": {
+        "bytes": 21665792,
+        "sha256": "96d8af5f9fbf42834b161f913d209ddac8e83738ace243e4b78107ebbe3a7ceb"
+      },
+      "packageVersion": "0.1.8"
+    },
+    "sourceState": {
+      "contentDigest": {
+        "algorithm": "sha256",
+        "fileCount": 45,
+        "framing": "sorted git pathname bytes framed by uint64-be length, then pathname, one-byte presence, and for present files uint64-be content length plus content",
+        "includesTrackedAndUntrackedFiles": true,
+        "pathspecs": [
+          "Cargo.toml",
+          "Cargo.lock",
+          "rust-toolchain.toml",
+          "Taskfile.yml",
+          "crates/xqdb/Cargo.toml",
+          "crates/xqdb/src",
+          "bindings/napi-xqdb/Cargo.toml",
+          "bindings/napi-xqdb/build.rs",
+          "bindings/napi-xqdb/src",
+          "js-xqdb/package.json",
+          "js-xqdb/package-lock.json",
+          "js-xqdb/tsconfig.json",
+          "js-xqdb/tsconfig.build.json",
+          "js-xqdb/src",
+          "js-xqdb/scripts",
+          "js-xqdb/native.cjs",
+          "js-xqdb/native.d.ts",
+          "testing/kdb",
+          "benchmarks/node/package.json",
+          "benchmarks/node/package-lock.json",
+          "benchmarks/node/bench.mjs"
+        ],
+        "value": "8138c382e905504c8e7bf810b2369a6bc037299d1fdaac43cd27afb95411be4d"
+      },
+      "describe": "v0.1.8-0-g5889c21-dirty",
+      "dirty": true,
+      "identity": "dirty working-tree source state identified by revision plus contentDigest; this does not prove which source built the loaded artifacts",
+      "revision": "5889c210040ba66b3f657ba11e6bf679b5962146",
+      "version": "0.1.8"
+    }
+  },
+  "runtime": {
+    "arrow": "21.2.0",
+    "node": "v26.3.0"
+  },
+  "schemaVersion": 2,
+  "subjects": [
+    {
+      "id": "xqdb",
+      "package": "@xbbg/xqdb",
+      "version": "0.1.8",
+      "implementation": "Rust core via napi-rs, Arrow C Stream decode",
+      "representation": "apache-arrow Table",
+      "config": {},
+      "notes": []
+    },
+    {
+      "id": "jkdb",
+      "package": "jkdb",
+      "version": "1.4.0",
+      "implementation": "Rust core via napi-rs, plain JS objects",
+      "representation": "column-oriented object with Symbol.for(\"meta\") schema",
+      "config": {
+        "includeNanosecond": false,
+        "useBigInt": true
+      },
+      "notes": [
+        "sub-millisecond timestamps need includeNanosecond:true, measured here on a second connection; in that mode temporal values become text and the encoder rejects them, so tables cannot be sent back"
+      ]
+    },
+    {
+      "id": "node-q",
+      "package": "node-q",
+      "version": "2.7.0",
+      "implementation": "pure JavaScript codec",
+      "representation": "column-oriented object (flipTables:false)",
+      "config": {
+        "flipTables": false
+      },
+      "notes": [
+        "int64 decodes to double and loses precision beyond 2^53; timestamps decode to millisecond Date",
+        "long2number:false and nanos2date:false restore exactness with Long wrappers but roughly double decode time"
+      ]
+    }
+  ],
+  "suite": "node",
+  "order": {
+    "scalar": [
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ]
+    ],
+    "read.trade": [
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ]
+    ],
+    "send.trade": [
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ]
+    ],
+    "read.wide": [
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ]
+    ],
+    "send.wide": [
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ]
+    ],
+    "read.depth": [
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "node-q",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb",
+        "node-q"
+      ],
+      [
+        "node-q",
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb",
+        "node-q"
+      ],
+      [
+        "jkdb",
+        "node-q",
+        "xqdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "node-q",
+        "xqdb",
+        "jkdb"
+      ]
+    ],
+    "send.depth": [
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "xqdb",
+        "jkdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ],
+      [
+        "jkdb",
+        "xqdb"
+      ]
+    ]
+  }
+}
