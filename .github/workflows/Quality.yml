@@ -173,12 +173,16 @@ jobs:
         run: uv build --wheel --out-dir dist
       - name: Install lowest direct runtime dependencies
         shell: bash
+        # The wheel's own dependencies are transitive to uv, so `lowest-direct` would
+        # leave them at their newest versions; passing the project requirements
+        # alongside the wheel makes them direct and pins them to their floors.
         run: |
           set -euo pipefail
           uv venv floor --python "${{ matrix.python-version }}"
           uv pip install --python floor/bin/python \
             --resolution lowest-direct \
             --only-binary :all: \
+            -r pyproject.toml \
             dist/*.whl
       - name: Install current test tooling without lowering its dependency set
         shell: bash
