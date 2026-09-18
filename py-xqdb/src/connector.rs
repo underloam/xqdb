@@ -3,14 +3,18 @@ use crate::error::PyXqdbError;
 use chrono::{Datelike, Timelike};
 use indexmap::IndexMap;
 use polars::prelude::{DataFrame, Series};
-use pyo3::exceptions::{PyOverflowError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyMemoryError, PyOverflowError, PyTypeError, PyValueError};
+use pyo3::pybacked::PyBackedBytes;
 use pyo3::types::{
-    PyBool, PyBytes, PyDate, PyDateTime, PyDelta, PyDict, PyFloat, PyInt, PyList, PyString, PyTime,
-    PyTuple, PyTzInfo, PyTzInfoAccess,
+    PyBool, PyBytes, PyDate, PyDateTime, PyDelta, PyDict, PyFloat, PyInt, PyList, PyModule,
+    PyString, PyTime, PyTuple, PyTzInfo, PyTzInfoAccess,
 };
 use pyo3::{prelude::*, IntoPyObjectExt};
 use std::collections::HashSet;
-use xqdb::connector::Connector;
+use std::sync::Mutex;
+use std::time::Duration;
+use xqdb::connector::{CompressionMode, Connector, ConnectorAbortHandle, ConnectorSettings};
+use xqdb::qvalue::{QValue, ValueMode};
 use xqdb::types::{MsgType, QLambda, QOperator, SymbolEncoding, K, MIN_Q_TIMESTAMP_UNIX_NANOS};
 
 pub(crate) enum ArrowValue {
@@ -90,9 +94,333 @@ impl XqdbQLambda {
     }
 }
 
+#[pyclass(frozen, eq, module = "xqdb", skip_from_py_object)]
+#[derive(Clone, Eq, PartialEq)]
+pub struct XqdbQValue {
+    value: QValue,
+}
+
+impl XqdbQValue {
+    fn from_qvalue(value: QValue) -> Self {
+        Self { value }
+    }
+}
+
+fn parse_atom_kind(kind: &Bound<'_, PyAny>) -> PyResult<u8> {
+    let parsed = if kind.is_instance_of::<PyBool>() {
+        return Err(PyTypeError::new_err(
+            "q atom kind must be a type name or integer code",
+        ));
+    } else if let Ok(name) = kind.extract::<&str>() {
+        match name {
+            "boolean" | "bool" => 1,
+            "guid" => 2,
+            "byte" => 4,
+            "short" => 5,
+            "int" => 6,
+            "long" => 7,
+            "real" => 8,
+            "float" => 9,
+            "char" => 10,
+            "symbol" => 11,
+            "timestamp" => 12,
+            "month" => 13,
+            "date" => 14,
+            "datetime" => 15,
+            "timespan" => 16,
+            "minute" => 17,
+            "second" => 18,
+            "time" => 19,
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "unsupported q atom kind {name:?}"
+                )))
+            }
+        }
+    } else {
+        let numeric = kind
+            .extract::<i64>()
+            .map_err(|_| PyTypeError::new_err("q atom kind must be a type name or integer code"))?;
+        u8::try_from(numeric)
+            .map_err(|_| PyValueError::new_err(format!("unsupported q atom kind {numeric}")))?
+    };
+    if !(1..=19).contains(&parsed) || parsed == 3 {
+        return Err(PyValueError::new_err(format!(
+            "unsupported q atom kind {parsed}"
+        )));
+    }
+    Ok(parsed)
+}
+
+fn parse_guid_bytes(value: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
+    if let Ok(bytes) = value.cast::<PyBytes>() {
+        if bytes.as_bytes().len() != 16 {
+            return Err(PyValueError::new_err(
+                "q GUID atom value must contain exactly 16 bytes",
+            ));
+        }
+        return Ok(bytes.as_bytes().to_vec());
+    }
+
+    if let Ok(text) = value.extract::<&str>() {
+        if !matches!(text.len(), 32 | 36) {
+            return Err(PyValueError::new_err(
+                "q GUID atom value must be 16 bytes or a UUID string",
+            ));
+        }
+        let compact: String = text.chars().filter(|character| *character != '-').collect();
+        if compact.len() != 32 || !compact.is_ascii() {
+            return Err(PyValueError::new_err(
+                "q GUID atom value must be 16 bytes or a UUID string",
+            ));
+        }
+        let mut bytes = Vec::with_capacity(16);
+        for offset in (0..32).step_by(2) {
+            bytes.push(
+                u8::from_str_radix(&compact[offset..offset + 2], 16).map_err(|_| {
+                    PyValueError::new_err("q GUID atom value must be 16 bytes or a UUID string")
+                })?,
+            );
+        }
+        return Ok(bytes);
+    }
+
+    if let Some(attribute) = value.getattr_opt("bytes")? {
+        if let Ok(bytes) = attribute.cast::<PyBytes>() {
+            if bytes.as_bytes().len() == 16 {
+                return Ok(bytes.as_bytes().to_vec());
+            }
+        }
+    }
+    Err(PyTypeError::new_err(
+        "q GUID atom value must be 16 bytes, a UUID string, or uuid.UUID",
+    ))
+}
+
+fn null_atom_payload(kind: u8) -> Vec<u8> {
+    match kind {
+        1 | 4 => vec![0],
+        2 => vec![0; 16],
+        5 => i16::MIN.to_le_bytes().to_vec(),
+        6 | 13 | 14 | 17 | 18 | 19 => i32::MIN.to_le_bytes().to_vec(),
+        7 | 12 | 16 => i64::MIN.to_le_bytes().to_vec(),
+        8 => f32::NAN.to_le_bytes().to_vec(),
+        9 | 15 => f64::NAN.to_le_bytes().to_vec(),
+        10 => vec![b' '],
+        11 => vec![0],
+        _ => unreachable!("atom kind is validated before building a null payload"),
+    }
+}
+
+fn atom_payload(kind: u8, value: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
+    if value.is_none() {
+        return Ok(null_atom_payload(kind));
+    }
+    if value.is_instance_of::<PyBool>() && kind != 1 {
+        return Err(PyTypeError::new_err(
+            "bool is only valid for a q boolean atom",
+        ));
+    }
+    match kind {
+        1 => {
+            if !value.is_instance_of::<PyBool>() {
+                return Err(PyTypeError::new_err(
+                    "q boolean atom value must be bool or None",
+                ));
+            }
+            Ok(vec![u8::from(value.extract::<bool>()?)])
+        }
+        2 => parse_guid_bytes(value),
+        4 => Ok(vec![value.extract::<u8>()?]),
+        5 => Ok(value.extract::<i16>()?.to_le_bytes().to_vec()),
+        6 => Ok(value.extract::<i32>()?.to_le_bytes().to_vec()),
+        7 => Ok(value.extract::<i64>()?.to_le_bytes().to_vec()),
+        8 => {
+            let number = value.extract::<f64>()?;
+            let real = number as f32;
+            if number.is_finite() && !real.is_finite() {
+                return Err(PyValueError::new_err(
+                    "q real atom value exceeds the finite 32-bit float range",
+                ));
+            }
+            Ok(real.to_le_bytes().to_vec())
+        }
+        9 => Ok(value.extract::<f64>()?.to_le_bytes().to_vec()),
+        10 => {
+            let bytes = if let Ok(bytes) = value.cast::<PyBytes>() {
+                bytes.as_bytes()
+            } else if let Ok(text) = value.extract::<&str>() {
+                text.as_bytes()
+            } else {
+                return Err(PyTypeError::new_err(
+                    "q char atom value must be one byte or a one-byte UTF-8 string",
+                ));
+            };
+            if bytes.len() != 1 {
+                return Err(PyValueError::new_err(
+                    "q char atom value must contain exactly one byte",
+                ));
+            }
+            Ok(bytes.to_vec())
+        }
+        11 => {
+            let bytes = if let Ok(bytes) = value.cast::<PyBytes>() {
+                bytes.as_bytes()
+            } else if let Ok(text) = value.extract::<&str>() {
+                text.as_bytes()
+            } else {
+                return Err(PyTypeError::new_err(
+                    "q symbol atom value must be str, bytes, or None",
+                ));
+            };
+            if bytes.contains(&0) {
+                return Err(PyValueError::new_err(
+                    "q symbol atom value cannot contain NUL bytes",
+                ));
+            }
+            let mut payload = Vec::with_capacity(bytes.len() + 1);
+            payload.extend_from_slice(bytes);
+            payload.push(0);
+            Ok(payload)
+        }
+        12 | 16 => Ok(value.extract::<i64>()?.to_le_bytes().to_vec()),
+        13 | 14 | 17 | 18 | 19 => Ok(value.extract::<i32>()?.to_le_bytes().to_vec()),
+        15 => Ok(value.extract::<f64>()?.to_le_bytes().to_vec()),
+        _ => unreachable!("atom kind is validated before extracting its payload"),
+    }
+}
+
+fn native_qvalue(value: Bound<'_, PyAny>) -> Result<QValue, PyXqdbError> {
+    let converted = PyModule::import(value.py(), "xqdb._conversion")?
+        .getattr("to_arrow_inputs")?
+        .call1((value,))?;
+    let k = cast_to_k(converted)?;
+    let mut frame = xqdb::io::generate_j6_ipc_msg(MsgType::Sync, false, k)?;
+    drop(frame.drain(..8));
+    Ok(QValue::from_owned_bytes(frame)?)
+}
+
+fn extract_qvalue(value: Bound<'_, PyAny>) -> Result<QValue, PyXqdbError> {
+    if value.is_instance_of::<XqdbQValue>() {
+        Ok(value
+            .extract::<PyRef<XqdbQValue>>()
+            .map_err(PyErr::from)?
+            .value
+            .clone())
+    } else {
+        native_qvalue(value)
+    }
+}
+
+#[pymethods]
+impl XqdbQValue {
+    #[new]
+    fn new(body: &[u8]) -> Result<Self, PyXqdbError> {
+        Ok(Self::from_qvalue(QValue::from_bytes(body)?))
+    }
+
+    #[staticmethod]
+    fn atom(kind: Bound<'_, PyAny>, value: Bound<'_, PyAny>) -> Result<Self, PyXqdbError> {
+        let kind = parse_atom_kind(&kind)?;
+        let payload = atom_payload(kind, &value)?;
+        Ok(Self::from_qvalue(QValue::atom(kind, &payload)?))
+    }
+
+    #[staticmethod]
+    fn list(values: Bound<'_, PyAny>) -> Result<Self, PyXqdbError> {
+        if values.is_instance_of::<PyBytes>() || values.is_instance_of::<PyString>() {
+            return Err(
+                PyTypeError::new_err("XqdbQValue.list expects an iterable of values").into(),
+            );
+        }
+        let mut qvalues = Vec::new();
+        for item in values.try_iter()? {
+            let item = item?;
+            if qvalues.len() == i32::MAX as usize {
+                return Err(PyOverflowError::new_err(format!(
+                    "q general lists support at most {} values",
+                    i32::MAX
+                ))
+                .into());
+            }
+            qvalues.try_reserve(1).map_err(|error| {
+                PyMemoryError::new_err(format!(
+                    "unable to grow q general-list input to {} values: {error}",
+                    qvalues.len() + 1
+                ))
+            })?;
+            qvalues.push(extract_qvalue(item)?);
+        }
+        Ok(Self::from_qvalue(QValue::list(&qvalues)?))
+    }
+
+    #[staticmethod]
+    fn dictionary(keys: Bound<'_, PyAny>, values: Bound<'_, PyAny>) -> Result<Self, PyXqdbError> {
+        let keys = extract_qvalue(keys)?;
+        let values = extract_qvalue(values)?;
+        Ok(Self::from_qvalue(QValue::dictionary(&keys, &values)?))
+    }
+
+    #[staticmethod]
+    fn native(value: Bound<'_, PyAny>) -> Result<Self, PyXqdbError> {
+        Ok(Self::from_qvalue(native_qvalue(value)?))
+    }
+
+    #[getter]
+    fn body<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new(py, self.value.as_bytes())
+    }
+
+    #[getter]
+    fn type_code(&self) -> i16 {
+        self.value.type_code()
+    }
+
+    #[getter]
+    fn len(&self) -> usize {
+        self.value.len()
+    }
+
+    #[getter]
+    fn is_table(&self) -> bool {
+        self.value.is_table()
+    }
+
+    fn __bytes__<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new(py, self.value.as_bytes())
+    }
+
+    fn __len__(&self) -> usize {
+        self.value.len()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "XqdbQValue(type_code={}, len={}, body=<{} bytes>)",
+            self.value.type_code(),
+            self.value.len(),
+            self.value.as_bytes().len()
+        )
+    }
+}
+
+#[pyclass(frozen, module = "xqdb", skip_from_py_object)]
+pub struct XqdbAbortHandle {
+    handle: ConnectorAbortHandle,
+}
+
+#[pymethods]
+impl XqdbAbortHandle {
+    fn cancel(&self, py: Python) -> Result<(), PyXqdbError> {
+        let handle = self.handle.clone();
+        py.detach(move || handle.abort().map_err(PyXqdbError::from))
+    }
+}
+
 #[pyclass]
 pub struct XqdbConnector {
-    q: Connector,
+    q: Mutex<Connector>,
+    abort_handle: ConnectorAbortHandle,
 }
 
 fn parse_symbol_encoding(value: &str) -> PyResult<SymbolEncoding> {
@@ -103,29 +431,88 @@ fn parse_symbol_encoding(value: &str) -> PyResult<SymbolEncoding> {
     })
 }
 
+fn parse_compression(value: &str) -> PyResult<CompressionMode> {
+    match value {
+        "auto" => Ok(CompressionMode::Auto),
+        "on" => Ok(CompressionMode::On),
+        "off" => Ok(CompressionMode::Off),
+        _ => Err(PyValueError::new_err(format!(
+            "compression must be 'auto', 'on', or 'off', got {value:?}"
+        ))),
+    }
+}
+
+const MAX_TIMEOUT_SECONDS: f64 = 86_400.0;
+
+fn parse_timeout(name: &str, seconds: f64) -> PyResult<Duration> {
+    if !seconds.is_finite() || seconds < 0.0 || seconds > MAX_TIMEOUT_SECONDS {
+        return Err(PyValueError::new_err(format!(
+            "{name} must be a finite, non-negative number of seconds no greater than 86400"
+        )));
+    }
+    let duration = Duration::from_secs_f64(seconds);
+    Ok(if seconds > 0.0 && duration.is_zero() {
+        Duration::from_nanos(1)
+    } else {
+        duration
+    })
+}
+
+fn parse_optional_timeout(name: &str, value: Option<f64>) -> PyResult<Option<Duration>> {
+    value
+        .map(|seconds| parse_timeout(name, seconds))
+        .transpose()
+}
+
+fn parse_pem(name: &str, value: Option<Bound<'_, PyAny>>) -> PyResult<Option<Vec<u8>>> {
+    value
+        .map(|value| {
+            if let Ok(bytes) = value.cast::<PyBytes>() {
+                Ok(bytes.as_bytes().to_vec())
+            } else if let Ok(text) = value.extract::<&str>() {
+                Ok(text.as_bytes().to_vec())
+            } else {
+                Err(PyTypeError::new_err(format!(
+                    "{name} must be PEM text as str or bytes"
+                )))
+            }
+        })
+        .transpose()
+}
+
 const MAX_CONVERSION_DEPTH: usize = 64;
 const MAX_CALL_ARGUMENTS: usize = 8;
 const MICROSECONDS_PER_SECOND: i64 = 1_000_000;
 const MICROSECONDS_PER_DAY: i64 = 86_400 * MICROSECONDS_PER_SECOND;
 
 impl XqdbConnector {
-    fn execute(&mut self, py: Python, expr: &str, args: Bound<PyTuple>) -> PyResult<Py<PyAny>> {
+    fn execute(&self, py: Python, expr: &str, args: Bound<PyTuple>) -> PyResult<Py<PyAny>> {
         let args = cast_to_k_vec(args)?;
         let k = py
-            .detach(move || self.q.execute(expr, &args))
+            .detach(move || {
+                self.q
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .execute(expr, &args)
+            })
             .map_err(PyXqdbError::from)?;
         cast_k_to_py(py, k)
     }
 
     fn execute_async(
-        &mut self,
+        &self,
         py: Python,
         expr: &str,
         args: Bound<PyTuple>,
     ) -> Result<(), PyXqdbError> {
         let args = cast_to_k_vec(args)?;
-        py.detach(move || self.q.execute_async(expr, &args))
-            .map_err(PyXqdbError::from)
+        py.detach(move || {
+            self.q
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .execute_async(expr, &args)
+        })
+        .map_err(PyXqdbError::from)
     }
 }
 
@@ -237,17 +624,21 @@ fn cast_k_to_py_inner(py: Python, k: K, depth: usize) -> PyResult<Py<PyAny>> {
             .into_py_any(py)
         }
         K::MixedList(values) => {
-            let py_objects = values
-                .into_iter()
-                .map(|value| cast_k_to_py_inner(py, value, depth + 1))
-                .collect::<PyResult<Vec<_>>>()?;
+            let mut py_objects = Vec::new();
+            py_objects.try_reserve_exact(values.len()).map_err(|_| {
+                pyo3::exceptions::PyMemoryError::new_err("cannot allocate q mixed-list result")
+            })?;
+            for value in values {
+                py_objects.push(cast_k_to_py_inner(py, value, depth + 1)?);
+            }
             PyTuple::new(py, py_objects)?.into_py_any(py)
         }
         K::Series(k) => Ok(Py::new(py, ArrowSeries::new(k))?.into_any()),
         K::DataFrame(k) => Ok(Py::new(py, ArrowTable::new(k))?.into_any()),
         K::Operator(operator) => Ok(Py::new(py, XqdbQOperator { operator })?.into_any()),
         K::Lambda(lambda) => Ok(Py::new(py, XqdbQLambda { lambda })?.into_any()),
-        K::Null => ().into_py_any(py),
+        K::QValue(value) => Ok(Py::new(py, XqdbQValue::from_qvalue(value))?.into_any()),
+        K::Null => Ok(py.None()),
         K::Dict(dict) => {
             let py_dict = PyDict::new(py);
             for (key, value) in dict {
@@ -261,56 +652,168 @@ fn cast_k_to_py_inner(py: Python, k: K, depth: usize) -> PyResult<Py<PyAny>> {
 #[pymethods]
 impl XqdbConnector {
     #[new]
+    #[pyo3(signature = (
+        host,
+        port,
+        user,
+        password,
+        enable_tls,
+        timeout,
+        version,
+        *,
+        lossless = false,
+        compression = "auto",
+        compression_threshold = 10_000_000,
+        connect_timeout = None,
+        read_timeout = None,
+        write_timeout = None,
+        max_message_bytes = None,
+        max_pending_notifications = 1024,
+        tls_ca = None,
+        tls_cert = None,
+        tls_key = None,
+        tls_server_name = None
+    ))]
+    #[allow(clippy::too_many_arguments)]
     pub fn __init__(
         host: &str,
         port: u16,
         user: &str,
         password: &str,
         enable_tls: bool,
-        timeout: u64,
+        timeout: f64,
         version: u8,
-    ) -> PyResult<Self> {
+        lossless: bool,
+        compression: &str,
+        compression_threshold: usize,
+        connect_timeout: Option<f64>,
+        read_timeout: Option<f64>,
+        write_timeout: Option<f64>,
+        max_message_bytes: Option<usize>,
+        max_pending_notifications: usize,
+        tls_ca: Option<Bound<'_, PyAny>>,
+        tls_cert: Option<Bound<'_, PyAny>>,
+        tls_key: Option<Bound<'_, PyAny>>,
+        tls_server_name: Option<String>,
+    ) -> Result<Self, PyXqdbError> {
+        if compression_threshold == 0 {
+            return Err(
+                PyValueError::new_err("compression_threshold must be a positive integer").into(),
+            );
+        }
+        if max_message_bytes == Some(0) {
+            return Err(
+                PyValueError::new_err("max_message_bytes must be a positive integer").into(),
+            );
+        }
+        if max_pending_notifications == 0 {
+            return Err(PyValueError::new_err(
+                "max_pending_notifications must be a positive integer",
+            )
+            .into());
+        }
+
+        let timeout = parse_timeout("timeout", timeout)?;
+        let mut q = Connector::new(host, port, user, password, enable_tls, 0, version);
+        q.timeout = timeout;
+        q.configure(ConnectorSettings {
+            value_mode: if lossless {
+                ValueMode::Lossless
+            } else {
+                ValueMode::Native
+            },
+            compression: parse_compression(compression)?,
+            compression_threshold,
+            connect_timeout: parse_optional_timeout("connect_timeout", connect_timeout)?,
+            read_timeout: parse_optional_timeout("read_timeout", read_timeout)?,
+            write_timeout: parse_optional_timeout("write_timeout", write_timeout)?,
+            max_message_bytes,
+            max_pending_notifications,
+            tls_ca: parse_pem("tls_ca", tls_ca)?,
+            tls_cert: parse_pem("tls_cert", tls_cert)?,
+            tls_key: parse_pem("tls_key", tls_key)?,
+            tls_server_name,
+        })?;
+        let abort_handle = q.abort_handle();
         Ok(Self {
-            q: Connector::new(host, port, user, password, enable_tls, timeout, version),
+            q: Mutex::new(q),
+            abort_handle,
         })
     }
 
     #[getter]
-    fn symbol_encoding(&self) -> &'static str {
-        self.q.symbol_encoding.name()
+    fn symbol_encoding(&self, py: Python<'_>) -> &'static str {
+        py.detach(|| {
+            self.q
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .symbol_encoding
+                .name()
+        })
     }
 
     #[setter]
-    fn set_symbol_encoding(&mut self, value: &str) -> PyResult<()> {
-        self.q.symbol_encoding = parse_symbol_encoding(value)?;
+    fn set_symbol_encoding(&self, py: Python<'_>, value: &str) -> PyResult<()> {
+        let encoding = parse_symbol_encoding(value)?;
+        py.detach(|| {
+            self.q
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .symbol_encoding = encoding;
+        });
         Ok(())
     }
 
-    pub fn connect(&mut self, py: Python) -> Result<(), PyXqdbError> {
-        py.detach(|| self.q.connect().map_err(PyXqdbError::from))
+    fn abort_handle(&self) -> XqdbAbortHandle {
+        XqdbAbortHandle {
+            handle: self.abort_handle.clone(),
+        }
     }
 
-    pub fn shutdown(&mut self, py: Python) -> Result<(), PyXqdbError> {
-        py.detach(|| self.q.shutdown().map_err(PyXqdbError::from))
+    pub fn connect(&self, py: Python) -> Result<(), PyXqdbError> {
+        py.detach(|| {
+            self.q
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .connect()
+                .map_err(PyXqdbError::from)
+        })
+    }
+
+    pub fn shutdown(&self, py: Python) -> Result<(), PyXqdbError> {
+        self.abort_handle.abort()?;
+        py.detach(|| {
+            match self
+                .q
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .shutdown()
+            {
+                Ok(()) | Err(xqdb::errors::XqdbError::NotConnectedErr()) => Ok(()),
+                Err(error) => Err(PyXqdbError::from(error)),
+            }
+        })
     }
 
     #[pyo3(signature = (expr, *args))]
-    pub fn sync(&mut self, py: Python, expr: &str, args: Bound<PyTuple>) -> PyResult<Py<PyAny>> {
+    pub fn sync(&self, py: Python, expr: &str, args: Bound<PyTuple>) -> PyResult<Py<PyAny>> {
         self.execute(py, expr, args)
     }
 
     #[pyo3(signature = (expr, *args))]
-    pub fn asyn(
-        &mut self,
-        py: Python,
-        expr: &str,
-        args: Bound<PyTuple>,
-    ) -> Result<(), PyXqdbError> {
+    pub fn asyn(&self, py: Python, expr: &str, args: Bound<PyTuple>) -> Result<(), PyXqdbError> {
         self.execute_async(py, expr, args)
     }
 
-    pub fn receive(&mut self, py: Python) -> PyResult<Py<PyAny>> {
-        let k = py.detach(move || self.q.receive().map_err(PyXqdbError::from))?;
+    pub fn receive(&self, py: Python) -> PyResult<Py<PyAny>> {
+        let k = py
+            .detach(move || {
+                self.q
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .receive()
+            })
+            .map_err(PyXqdbError::from)?;
         cast_k_to_py(py, k)
     }
 }
@@ -346,7 +849,10 @@ fn cast_to_k_inner(
         )));
     }
 
-    if any.is_instance_of::<XqdbQOperator>() {
+    if any.is_instance_of::<XqdbQValue>() {
+        let value = any.extract::<PyRef<XqdbQValue>>()?;
+        Ok(K::QValue(value.value.clone()))
+    } else if any.is_instance_of::<XqdbQOperator>() {
         let value = any.extract::<PyRef<XqdbQOperator>>()?;
         Ok(K::Operator(value.operator))
     } else if any.is_instance_of::<XqdbQLambda>() {
@@ -528,6 +1034,55 @@ pub fn read_j6_binary_table(
         .detach(move || xqdb::io::read_j6_binary_table(&filepath, encoding))
         .map_err(PyXqdbError::from)?;
     Py::new(py, ArrowTable::new(frame))
+}
+
+fn value_mode(lossless: bool) -> ValueMode {
+    if lossless {
+        ValueMode::Lossless
+    } else {
+        ValueMode::Native
+    }
+}
+
+#[pyfunction]
+#[pyo3(signature = (body, symbol_encoding = "strict", lossless = false))]
+pub fn deserialize_value6(
+    py: Python,
+    body: Bound<'_, PyBytes>,
+    symbol_encoding: &str,
+    lossless: bool,
+) -> PyResult<Py<PyAny>> {
+    let encoding = parse_symbol_encoding(symbol_encoding)?;
+    let body = PyBackedBytes::from(body);
+    let value = py
+        .detach(move || xqdb::io::deserialize_j6(body.as_ref(), encoding, value_mode(lossless)))
+        .map_err(PyXqdbError::from)?;
+    cast_k_to_py(py, value)
+}
+
+#[pyfunction]
+#[pyo3(signature = (frame, symbol_encoding = "strict", lossless = false))]
+pub fn deserialize_ipc_bytes6(
+    py: Python,
+    frame: Bound<'_, PyBytes>,
+    symbol_encoding: &str,
+    lossless: bool,
+) -> PyResult<Py<PyTuple>> {
+    let encoding = parse_symbol_encoding(symbol_encoding)?;
+    let frame = PyBackedBytes::from(frame);
+    let (message_type, value) = py
+        .detach(move || {
+            xqdb::io::deserialize_j6_ipc_msg(frame.as_ref(), encoding, value_mode(lossless))
+        })
+        .map_err(PyXqdbError::from)?;
+    let message_type = match message_type {
+        MsgType::Async => "async",
+        MsgType::Sync => "sync",
+        MsgType::Response => "response",
+    };
+    let message_type = message_type.into_py_any(py)?;
+    let value = cast_k_to_py(py, value)?;
+    Ok(PyTuple::new(py, [message_type, value])?.unbind())
 }
 
 #[pyfunction]

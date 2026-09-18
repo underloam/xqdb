@@ -17,6 +17,7 @@ thiserror = { workspace = true }
 polars-arrow.workspace = true
 chrono = { workspace = true }
 indexmap = { workspace = true }
+mimalloc = { version = "0.1", default-features = false }
 
 [dependencies.polars]
 workspace = true

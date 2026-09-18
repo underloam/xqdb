@@ -3,40 +3,41 @@ import os
 import shutil
 import subprocess
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from xqdb import XqdbError, XqdbIOError, Q
+from xqdb import Q, XqdbError, XqdbIOError
 
 startup_timeout = 10
 q_external = os.environ.get("XQDB_TEST_Q_EXTERNAL") == "1"
-q_connection = None
+q_test_host: str
+q_test_port: int
 
 
-def _load_q_address():
+def _load_q_address() -> tuple[str, int]:
     host = os.environ.get("XQDB_TEST_Q_HOST", "127.0.0.1").strip()
     if not host:
-        raise pytest.UsageError("XQDB_TEST_Q_HOST must not be empty")
+        message = "XQDB_TEST_Q_HOST must not be empty"
+        raise pytest.UsageError(message)
 
     raw_port = os.environ.get("XQDB_TEST_Q_PORT", "1801")
     try:
         port = int(raw_port)
     except ValueError as error:
-        raise pytest.UsageError(
-            f"XQDB_TEST_Q_PORT must be an integer, got {raw_port!r}"
-        ) from error
+        message = f"XQDB_TEST_Q_PORT must be an integer, got {raw_port!r}"
+        raise pytest.UsageError(message) from error
     if not 1 <= port <= 65535:
-        raise pytest.UsageError(
-            f"XQDB_TEST_Q_PORT must be between 1 and 65535, got {port}"
-        )
+        message = f"XQDB_TEST_Q_PORT must be between 1 and 65535, got {port}"
+        raise pytest.UsageError(message)
     return host, port
 
 
 q_test_host, q_test_port = _load_q_address()
 
 
-def _fail_if_q_exited(proc):
+def _fail_if_q_exited(proc: subprocess.Popen[bytes]) -> None:
     return_code = proc.poll()
     if return_code is not None:
         pytest.fail(
@@ -46,7 +47,7 @@ def _fail_if_q_exited(proc):
         )
 
 
-def _connect_to_q(proc=None):
+def _connect_to_q(proc: subprocess.Popen[bytes] | None = None) -> Q:
     deadline = time.monotonic() + startup_timeout
     last_error = None
     while True:
@@ -64,12 +65,13 @@ def _connect_to_q(proc=None):
         )
         try:
             connection.connect()
-            return connection
         except (XqdbError, XqdbIOError) as error:
             last_error = error
             with contextlib.suppress(XqdbError, XqdbIOError):
                 connection.disconnect()
             time.sleep(min(0.1, remaining))
+        else:
+            return connection
 
     if proc is not None:
         _fail_if_q_exited(proc)
@@ -82,7 +84,7 @@ def _connect_to_q(proc=None):
     )
 
 
-def _stop_process(proc):
+def _stop_process(proc: subprocess.Popen[bytes]) -> None:
     if proc.poll() is not None:
         return
     proc.terminate()
@@ -94,17 +96,14 @@ def _stop_process(proc):
 
 
 @pytest.fixture(scope="session")
-def start_q_process():
-    global q_connection
-
-    proc = None
+def start_q_process() -> Iterator[Q]:
+    proc: subprocess.Popen[bytes] | None = None
+    connection: Q | None = None
     try:
         if not q_external:
             q_path = shutil.which("q")
             if q_path is None:
-                pytest.skip(
-                    "q binary not found on PATH; install kdb+/q to run these tests"
-                )
+                pytest.skip("q binary not found on PATH; install kdb+/q to run these tests")
             init_script = Path(__file__).resolve().parents[2] / "testing/kdb/init.q"
             allowed_environment = {
                 "DYLD_LIBRARY_PATH",
@@ -127,26 +126,23 @@ def start_q_process():
                 "WINDIR",
             }
             q_environment = {
-                name: value
-                for name, value in os.environ.items()
-                if name in allowed_environment
+                name: value for name, value in os.environ.items() if name in allowed_environment
             }
-            proc = subprocess.Popen(
+            proc = subprocess.Popen(  # noqa: S603 -- q_path is the selected executable.
                 [q_path, str(init_script), "-p", f"127.0.0.1:{q_test_port}"],
                 env=q_environment,
             )
 
-        q_connection = _connect_to_q(proc)
-        yield
+        connection = _connect_to_q(proc)
+        yield connection
     finally:
-        if q_connection is not None:
+        if connection is not None:
             with contextlib.suppress(XqdbError, XqdbIOError):
-                q_connection.disconnect()
+                connection.disconnect()
         if proc is not None:
             _stop_process(proc)
 
 
 @pytest.fixture
-def q(start_q_process):
-    assert q_connection is not None
-    return q_connection
+def q(start_q_process: Q) -> Q:
+    return start_q_process
