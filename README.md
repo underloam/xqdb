@@ -1,4 +1,8 @@
-# XQDB
+<p align="center">
+  <a href="#quick-start">
+    <img src=".github/assets/readme-hero-flat.svg" alt="xqdb banner" width="100%">
+  </a>
+</p>
 
 A high-performance connector to kdb+/q with Python (Narwhals/Arrow) and Node.js (TypeScript) bindings.
 
