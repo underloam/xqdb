@@ -1,0 +1,141 @@
+<svg width="1200" height="326" viewBox="0 0 1200 326" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">xqdb IPC read benchmarks</title>
+  <desc id="desc">100,000-row KDB-X 5.0 fixture read latency and throughput in Node.js 26.3 and CPython 3.12.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="326" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#29244f"/>
+      <stop offset="0.58" stop-color="#211d3f"/>
+      <stop offset="1" stop-color="#1b1a20"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect width="1200" height="326" rx="26"/>
+    </clipPath>
+  </defs>
+  <rect width="1200" height="326" rx="26" fill="url(#bg)"/>
+  <g clip-path="url(#frame)">
+    <text x="-10" y="318" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="260" font-weight="800" fill="#ffffff" opacity="0.025">xqdbxqdbxqdbxqdb</text>
+  </g>
+  <rect x="0.5" y="0.5" width="1199" height="325" rx="25.5" stroke="#ffffff" stroke-opacity="0.11"/>
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <text x="28" y="32" font-size="12" font-weight="700" fill="#a5b4fc" letter-spacing="1.4">CLIENT BENCHMARKS · 100,000-ROW KDB-X 5.0 FIXTURE (MEDIAN LATENCY &amp; THROUGHPUT, LOWER IS FASTER)</text>
+    <text x="1172" y="32" font-size="11.5" fill="#bdb8d8" text-anchor="end">50 rounds per operation · verified q round-trip</text>
+    <line x1="28" y1="44" x2="1172" y2="44" stroke="#ffffff" stroke-opacity="0.10"/>
+    <g transform="translate(28 54)">
+      <text x="0" y="16" font-size="15" font-weight="800" fill="#ffffff">Node.js — Node 26.3.0</text>
+      <text x="548" y="16" font-size="11.5" fill="#bdb8d8" text-anchor="end">11× – 49× faster on table reads</text>
+      <g transform="translate(0 32)">
+        <text x="0" y="12" font-size="11.5" font-weight="700" fill="#a5b4fc">read trade (14 cols, 10.5 MiB)</text>
+        <text x="0" y="28.5" font-size="11.5" font-weight="700" fill="#ffffff">XQDB</text>
+        <rect x="108" y="18" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="18" width="18" height="12" rx="4" fill="#a5b4fc" fill-opacity="0.92"/>
+        <text x="134" y="28" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="700" fill="#a5b4fc">14.2 ms · 741 MiB/s</text>
+        <text x="548" y="28" font-size="10.5" fill="#bdb8d8" text-anchor="end">★ fastest</text>
+        <text x="0" y="46.5" font-size="11.5" font-weight="500" fill="#bdb8d8">jkdb 1.4.0</text>
+        <rect x="108" y="36" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="36" width="205" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="321" y="46" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">158.6 ms</text>
+        <text x="548" y="46" font-size="10.5" fill="#bdb8d8" text-anchor="end">11.2× slower</text>
+        <text x="0" y="64.5" font-size="11.5" font-weight="500" fill="#bdb8d8">node-q 2.7.0</text>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="54" width="211" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="327" y="64" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">163.3 ms</text>
+        <text x="548" y="64" font-size="10.5" fill="#bdb8d8" text-anchor="end">11.5× slower</text>
+      </g>
+      <g transform="translate(0 108)">
+        <text x="0" y="12" font-size="11.5" font-weight="700" fill="#a5b4fc">read wide (64 cols, 48.6 MiB)</text>
+        <text x="0" y="28.5" font-size="11.5" font-weight="700" fill="#ffffff">XQDB</text>
+        <rect x="108" y="18" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="18" width="8" height="12" rx="4" fill="#a5b4fc" fill-opacity="0.92"/>
+        <text x="124" y="28" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="700" fill="#a5b4fc">54.2 ms · 897 MiB/s</text>
+        <text x="548" y="28" font-size="10.5" fill="#bdb8d8" text-anchor="end">★ fastest</text>
+        <text x="0" y="46.5" font-size="11.5" font-weight="500" fill="#bdb8d8">jkdb 1.4.0</text>
+        <rect x="108" y="36" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="36" width="212" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="328" y="46" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">2,645.4 ms</text>
+        <text x="548" y="46" font-size="10.5" fill="#bdb8d8" text-anchor="end">48.8× slower</text>
+        <text x="0" y="64.5" font-size="11.5" font-weight="500" fill="#bdb8d8">node-q 2.7.0</text>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="54" width="216" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="332" y="64" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">2,694.5 ms</text>
+        <text x="548" y="64" font-size="10.5" fill="#bdb8d8" text-anchor="end">49.7× slower</text>
+      </g>
+      <g transform="translate(0 184)">
+        <text x="0" y="12" font-size="11.5" font-weight="700" fill="#a5b4fc">read depth (nested lists, 10.8 MiB)</text>
+        <text x="0" y="28.5" font-size="11.5" font-weight="700" fill="#ffffff">XQDB</text>
+        <rect x="108" y="18" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="18" width="18" height="12" rx="4" fill="#a5b4fc" fill-opacity="0.92"/>
+        <text x="134" y="28" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="700" fill="#a5b4fc">15.2 ms · 708 MiB/s</text>
+        <text x="548" y="28" font-size="10.5" fill="#bdb8d8" text-anchor="end">★ fastest</text>
+        <text x="0" y="46.5" font-size="11.5" font-weight="500" fill="#bdb8d8">node-q 2.7.0</text>
+        <rect x="108" y="36" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="36" width="202" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="318" y="46" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">169.8 ms</text>
+        <text x="548" y="46" font-size="10.5" fill="#bdb8d8" text-anchor="end">11.2× slower</text>
+        <text x="0" y="64.5" font-size="11.5" font-weight="500" fill="#bdb8d8">jkdb 1.4.0</text>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="54" width="210" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="326" y="64" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">176.6 ms</text>
+        <text x="548" y="64" font-size="10.5" fill="#bdb8d8" text-anchor="end">11.6× slower</text>
+      </g>
+    </g>
+    <line x1="600" y1="54" x2="600" y2="306" stroke="#ffffff" stroke-opacity="0.10"/>
+    <g transform="translate(624 54)">
+      <text x="0" y="16" font-size="15" font-weight="800" fill="#ffffff">Python — CPython 3.12.13</text>
+      <text x="548" y="16" font-size="11.5" fill="#bdb8d8" text-anchor="end">PyArrow · Polars · pandas backends</text>
+      <g transform="translate(0 32)">
+        <text x="0" y="12" font-size="11.5" font-weight="700" fill="#a5b4fc">read trade (14 cols, 10.5 MiB)</text>
+        <text x="0" y="28.5" font-size="11.5" font-weight="700" fill="#ffffff">XQDB pyarrow</text>
+        <rect x="108" y="18" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="18" width="20" height="12" rx="4" fill="#a5b4fc" fill-opacity="0.92"/>
+        <text x="136" y="28" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="700" fill="#a5b4fc">8.6 ms · 1,217 MiB/s</text>
+        <text x="548" y="28" font-size="10.5" fill="#bdb8d8" text-anchor="end">★ fastest</text>
+        <text x="0" y="46.5" font-size="11.5" font-weight="500" fill="#bdb8d8">kola 2.5.1</text>
+        <rect x="108" y="36" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="36" width="35" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="151" y="46" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">14.9 ms</text>
+        <text x="548" y="46" font-size="10.5" fill="#bdb8d8" text-anchor="end">1.7× slower</text>
+        <text x="0" y="64.5" font-size="11.5" font-weight="500" fill="#bdb8d8">qconnect 0.1.6</text>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="54" width="207" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="323" y="64" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">89.4 ms</text>
+        <text x="548" y="64" font-size="10.5" fill="#bdb8d8" text-anchor="end">10.4× slower</text>
+      </g>
+      <g transform="translate(0 108)">
+        <text x="0" y="12" font-size="11.5" font-weight="700" fill="#a5b4fc">read wide (64 cols, 48.6 MiB)</text>
+        <text x="0" y="28.5" font-size="11.5" font-weight="700" fill="#ffffff">XQDB pyarrow</text>
+        <rect x="108" y="18" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="18" width="35" height="12" rx="4" fill="#a5b4fc" fill-opacity="0.92"/>
+        <text x="151" y="28" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="700" fill="#a5b4fc">29.6 ms · 1,641 MiB/s</text>
+        <text x="548" y="28" font-size="10.5" fill="#bdb8d8" text-anchor="end">★ fastest</text>
+        <text x="0" y="46.5" font-size="11.5" font-weight="500" fill="#bdb8d8">kola 2.5.1</text>
+        <rect x="108" y="36" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="36" width="103" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="219" y="46" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">86.9 ms</text>
+        <text x="548" y="46" font-size="10.5" fill="#bdb8d8" text-anchor="end">2.9× slower</text>
+        <text x="0" y="64.5" font-size="11.5" font-weight="500" fill="#bdb8d8">qconnect 0.1.6</text>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="54" width="212" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="328" y="64" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">178.0 ms</text>
+        <text x="548" y="64" font-size="10.5" fill="#bdb8d8" text-anchor="end">6.0× slower</text>
+      </g>
+      <g transform="translate(0 184)">
+        <text x="0" y="12" font-size="11.5" font-weight="700" fill="#a5b4fc">read depth (nested lists, 10.8 MiB)</text>
+        <text x="0" y="28.5" font-size="11.5" font-weight="700" fill="#ffffff">XQDB pyarrow</text>
+        <rect x="108" y="18" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="18" width="23" height="12" rx="4" fill="#a5b4fc" fill-opacity="0.92"/>
+        <text x="139" y="28" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="700" fill="#a5b4fc">10.0 ms · 1,080 MiB/s</text>
+        <text x="548" y="28" font-size="10.5" fill="#bdb8d8" text-anchor="end">★ fastest</text>
+        <text x="0" y="46.5" font-size="11.5" font-weight="500" fill="#bdb8d8">kola 2.5.1</text>
+        <rect x="108" y="36" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="36" width="35" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="151" y="46" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">15.0 ms</text>
+        <text x="548" y="46" font-size="10.5" fill="#bdb8d8" text-anchor="end">1.5× slower</text>
+        <text x="0" y="64.5" font-size="11.5" font-weight="500" fill="#bdb8d8">qconnect 0.1.6</text>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.04"/>
+        <rect x="108" y="54" width="220" height="12" rx="4" fill="#ffffff" fill-opacity="0.22"/>
+        <text x="336" y="64" font-family="'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11" font-weight="500" fill="#ffffff">9,549 ms (clipped)</text>
+        <text x="548" y="64" font-size="10.5" fill="#bdb8d8" text-anchor="end">957× slower</text>
+      </g>
+    </g>
+  </g>
+</svg>
