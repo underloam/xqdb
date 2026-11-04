@@ -4,6 +4,15 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/xqdb/"><img src="https://xbbg.org/badges/xqdb/python.svg" alt="xqdb on PyPI"></a>
+  <a href="https://www.npmjs.com/package/@xbbg/xqdb"><img src="https://xbbg.org/badges/xqdb/javascript.svg" alt="@xbbg/xqdb on npm"></a>
+  <a href="#overview"><img src="https://xbbg.org/badges/xqdb/rust.svg" alt="Rust core"></a><br>
+  <a href="https://github.com/underloam/xqdb/actions"><img src="https://xbbg.org/badges/xqdb/ci.svg" alt="CI"></a>
+  <a href="https://xbbg.org/xqdb/"><img src="https://xbbg.org/badges/xqdb/docs.svg" alt="Documentation"></a>
+  <a href="LICENSE"><img src="https://xbbg.org/badges/xqdb/license.svg" alt="License"></a>
+</p>
+
 A high-performance connector to kdb+/q with Python (Narwhals/Arrow) and Node.js (TypeScript) bindings.
 
 XQDB is independent and not affiliated with or endorsed by KX. kdb+ is a trademark of KX.
