@@ -10,9 +10,12 @@ import {
 } from "apache-arrow";
 import type { DataType, TypeMap } from "apache-arrow";
 import { once } from "node:events";
+import { mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   Q,
@@ -945,38 +948,102 @@ describe("offline Arrow wire encoding", () => {
   });
 });
 
-async function openSilentQServer(): Promise<{
+type PeerTransport = "tcp" | "unix";
+
+interface TcpPeerEndpoint {
+  readonly host: string;
   readonly port: number;
+}
+
+interface UnixPeerEndpoint {
+  readonly unixSocket: string;
+}
+
+interface QPeer {
+  /** QOptions endpoint fields that reach this peer. */
+  readonly endpoint: TcpPeerEndpoint | UnixPeerEndpoint;
+  /** Handshake credentials without their NUL terminator, one per accepted connection. */
+  readonly credentials: readonly Buffer[];
+  /** Complete IPC frames received after the handshakes. */
+  readonly requests: readonly Buffer[];
   close(): Promise<void>;
-}> {
+}
+
+const peerTransports: readonly PeerTransport[] =
+  process.platform === "win32" ? ["tcp"] : ["tcp", "unix"];
+// Little-endian sync frame carrying the char-vector query "6*7".
+const sixTimesSevenRequest = Buffer.concat([
+  Buffer.from([1, 1, 0, 0, 17, 0, 0, 0, 10, 0, 3, 0, 0, 0]),
+  Buffer.from("6*7"),
+]);
+// Little-endian response frame carrying the q long atom 42 (type -7).
+const fortyTwoResponse = Buffer.from([1, 2, 0, 0, 17, 0, 0, 0, 0xf9, 42, 0, 0, 0, 0, 0, 0, 0]);
+
+/**
+ * Acknowledges every q handshake on loopback TCP or a fresh Unix-domain socket path and never
+ * closes a connection itself. With a response it answers each complete sync request; otherwise it
+ * stays silent.
+ */
+async function openQPeer(transport: PeerTransport, response?: Uint8Array): Promise<QPeer> {
   let connectionError: Error | undefined;
+  const credentials: Buffer[] = [];
+  const requests: Buffer[] = [];
   const server = createServer((socket) => {
     let authenticated = false;
+    let received: Buffer = Buffer.alloc(0);
     socket.on("error", (error) => {
       if (!authenticated) {
         connectionError ??= error;
       }
     });
-    socket.on("data", function authenticate(credentials) {
-      if (credentials.includes(0)) {
-        socket.off("data", authenticate);
+    socket.on("data", (chunk) => {
+      received = Buffer.concat([received, chunk]);
+      if (!authenticated) {
+        const terminator = received.indexOf(0);
+        if (terminator === -1) {
+          return;
+        }
+        credentials.push(Buffer.from(received.subarray(0, terminator)));
+        received = received.subarray(terminator + 1);
         authenticated = true;
         socket.write(Uint8Array.of(6));
+      }
+      while (received.length >= 8 && received.length >= received.readUInt32LE(4)) {
+        const frameLength = received.readUInt32LE(4);
+        const frame = Buffer.from(received.subarray(0, frameLength));
+        received = received.subarray(frameLength);
+        requests.push(frame);
+        if (response !== undefined && frame[1] === 1) {
+          socket.write(response);
+        }
       }
     });
   });
   server.on("error", (error) => {
     connectionError ??= error;
   });
+  const directory = transport === "unix" ? await mkdtemp(join(tmpdir(), "xq-")) : undefined;
   const listening = once(server, "listening");
-  server.listen(0, "127.0.0.1");
+  if (directory === undefined) {
+    server.listen(0, "127.0.0.1");
+  } else {
+    // Short names keep the path within the 104-byte macOS sun_path limit.
+    server.listen(join(directory, "q.sock"));
+  }
   await listening;
-  const serverPort = requiredServerPort(server.address());
+  const address = server.address();
+  const endpoint =
+    typeof address === "string"
+      ? { unixSocket: address }
+      : { host: "127.0.0.1", port: requiredServerPort(address) };
 
   async function close(): Promise<void> {
     const closed = once(server, "close");
     server.close();
     await closed;
+    if (directory !== undefined) {
+      await rm(directory, { force: true, recursive: true });
+    }
     if (connectionError !== undefined) {
       throw connectionError;
     }
@@ -984,17 +1051,19 @@ async function openSilentQServer(): Promise<{
 
   return {
     close,
-    port: serverPort,
+    credentials,
+    endpoint,
+    requests,
   };
 }
 
-describe("offline socket timeout policy", () => {
+describe.each(peerTransports)("offline %s socket timeout policy", (transport) => {
   it.each([
     ["inherited fractional default", { timeout: 100.5 }],
     ["granular override", { readTimeout: 100.5, timeout: 2000 }],
   ])("honors the %s on a silent authenticated socket", async (_name, options) => {
-    const server = await openSilentQServer();
-    const q = new Q({ host: "127.0.0.1", port: server.port, ...options });
+    const peer = await openQPeer(transport);
+    const q = new Q({ ...peer.endpoint, ...options });
     try {
       await q.connect();
       const started = performance.now();
@@ -1009,7 +1078,7 @@ describe("offline socket timeout policy", () => {
         try {
           await q.disconnect();
         } finally {
-          await server.close();
+          await peer.close();
         }
       }
     }
@@ -1019,12 +1088,8 @@ describe("offline socket timeout policy", () => {
     ["default", { timeout: 0 }],
     ["granular", { readTimeout: 0, timeout: 100 }],
   ])("lets an explicit zero %s timeout disable the socket limit", async (_name, options) => {
-    const server = await openSilentQServer();
-    const q = new Q({
-      host: "127.0.0.1",
-      port: server.port,
-      ...options,
-    });
+    const peer = await openQPeer(transport);
+    const q = new Q({ ...peer.endpoint, ...options });
     let observationTimer: NodeJS.Timeout | undefined;
     try {
       await q.connect();
@@ -1049,8 +1114,47 @@ describe("offline socket timeout policy", () => {
         try {
           await q.disconnect();
         } finally {
-          await server.close();
+          await peer.close();
         }
+      }
+    }
+  });
+});
+
+describe.skipIf(process.platform === "win32")("offline Unix-domain socket transport", () => {
+  it("connects by path alone, authenticates, and answers an exact sync query", async () => {
+    const peer = await openQPeer("unix", fortyTwoResponse);
+    let q: Q | undefined;
+    try {
+      q = await Q.connect({ ...peer.endpoint, password: "secret", user: "alice" });
+      await expect(q.sync("6*7")).resolves.toBe(42n);
+      expect(peer.credentials).toStrictEqual([Buffer.from("alice:secret\u0006")]);
+      expect(peer.requests).toStrictEqual([sixTimesSevenRequest]);
+    } finally {
+      try {
+        await q?.disconnect();
+      } finally {
+        await peer.close();
+      }
+    }
+  });
+
+  it("keeps the connection through idle cancellation and reconnects by path", async () => {
+    const peer = await openQPeer("unix", fortyTwoResponse);
+    const q = new Q(peer.endpoint);
+    try {
+      await q.connect();
+      await q.cancel();
+      await expect(q.sync("6*7")).resolves.toBe(42n);
+      expect(peer.credentials).toHaveLength(1);
+      await q.disconnect();
+      await expect(q.sync("6*7")).resolves.toBe(42n);
+      expect(peer.credentials).toHaveLength(2);
+    } finally {
+      try {
+        await q.disconnect();
+      } finally {
+        await peer.close();
       }
     }
   });

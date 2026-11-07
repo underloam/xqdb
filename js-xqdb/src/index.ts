@@ -22,5 +22,8 @@ export {
   type XqdbMessageType,
   type XqdbSymbolEncoding,
   type XqdbValue,
+  type QConnectionOptions,
   type QOptions,
+  type QTcpOptions,
+  type QUnixSocketOptions,
 } from "./types.js";

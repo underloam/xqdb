@@ -1,9 +1,6 @@
-export interface NativeOptions {
-  readonly host: string;
-  readonly port: number;
+interface NativeConnectionOptions {
   readonly user?: string;
   readonly password?: string;
-  readonly tls?: boolean;
   readonly timeoutMilliseconds?: number;
   readonly symbolEncoding?: string;
   readonly lossless?: boolean;
@@ -14,14 +11,37 @@ export interface NativeOptions {
   readonly writeTimeoutMilliseconds?: number;
   readonly maxMessageBytes?: number;
   readonly maxPendingNotifications?: number;
-  readonly tlsCa?: string;
-  readonly tlsCert?: string;
-  readonly tlsKey?: string;
-  readonly tlsServerName?: string;
   readonly queueCapacity?: number;
   readonly maxArgumentBytes?: number;
   readonly maxQueuedBytes?: number;
 }
+
+export interface NativeTcpEndpoint {
+  readonly host: string;
+  readonly port: number;
+  readonly unixSocket?: never;
+  readonly tls?: boolean;
+  readonly tlsCa?: string;
+  readonly tlsCert?: string;
+  readonly tlsKey?: string;
+  readonly tlsServerName?: string;
+}
+
+/** The addon independently rejects `unixSocket` beside TCP endpoint or TLS fields. */
+export interface NativeUnixSocketEndpoint {
+  readonly unixSocket: string;
+  readonly host?: never;
+  readonly port?: never;
+  readonly tls?: never;
+  readonly tlsCa?: never;
+  readonly tlsCert?: never;
+  readonly tlsKey?: never;
+  readonly tlsServerName?: never;
+}
+
+export type NativeEndpoint = NativeTcpEndpoint | NativeUnixSocketEndpoint;
+
+export type NativeOptions = NativeConnectionOptions & NativeEndpoint;
 
 export interface NativeEntry {
   readonly key: string;

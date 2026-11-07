@@ -6,6 +6,8 @@ import os
 import select
 import socket
 import struct
+import sys
+import tempfile
 import threading
 import time as clock
 from collections.abc import Callable, Iterable, Iterator
@@ -230,6 +232,99 @@ def silent_q_server() -> Iterator[int]:
     _raise_thread_failure(failures)
     assert not thread.is_alive()
     assert not errors
+
+
+_requires_unix_sockets = pytest.mark.skipif(
+    sys.platform == "win32", reason="Unix-domain sockets require a Unix platform"
+)
+
+
+def _recv_exactly(peer: socket.socket, size: int) -> bytes:
+    data = bytearray()
+    while len(data) < size:
+        chunk = peer.recv(size - len(data))
+        if not chunk:
+            message = "client disconnected during a q IPC message"
+            raise ConnectionError(message)
+        data.extend(chunk)
+    return bytes(data)
+
+
+def _read_q_credentials(peer: socket.socket) -> bytes:
+    credentials = bytearray()
+    while 0 not in credentials:
+        data = peer.recv(1024)
+        if not data:
+            message = "client disconnected before q IPC authentication"
+            raise ConnectionError(message)
+        credentials.extend(data)
+    return bytes(credentials)
+
+
+def _answer_q_sync(peer: socket.socket, query: str, result: object) -> None:
+    header = _recv_exactly(peer, 8)
+    frame = header + _recv_exactly(peer, struct.unpack_from("<I", header, 4)[0] - 8)
+    assert deserialize_ipc_bytes6(frame) == ("sync", query)
+    peer.sendall(serialize_as_ipc_bytes6("response", enable_compression=False, any=result))
+
+
+def _await_client_close(peer: socket.socket) -> None:
+    assert peer.recv(1) == b""
+
+
+def _scripted_q_session(
+    *exchanges: tuple[str, object], credentials: bytes = b":\x06\x00"
+) -> Callable[[socket.socket], None]:
+    def session(peer: socket.socket) -> None:
+        assert _read_q_credentials(peer) == credentials
+        peer.sendall(b"\x06")
+        for query, result in exchanges:
+            _answer_q_sync(peer, query, result)
+        _await_client_close(peer)
+
+    return session
+
+
+@contextlib.contextmanager
+def _unix_q_peer(*sessions: Callable[[socket.socket], None]) -> Iterator[Path]:
+    # pytest's temporary directories can exceed the 104-byte macOS socket path limit.
+    with tempfile.TemporaryDirectory(prefix="xqdb-", dir="/tmp") as directory:
+        path = Path(directory, "q.sock")
+        listener = socket.socket(socket.AF_UNIX)
+        listener.bind(str(path))
+        listener.listen(1)
+        listener.settimeout(5)
+        release = threading.Event()
+        errors: list[OSError] = []
+
+        def serve() -> None:
+            try:
+                for accepted, session in enumerate(sessions, start=1):
+                    peer, _ = listener.accept()
+                    if accepted == len(sessions):
+                        # An unexpected reconnect must fail instead of reaching a fresh session.
+                        listener.close()
+                    with peer:
+                        peer.settimeout(5)
+                        session(peer)
+            except OSError as error:
+                if not release.is_set():
+                    errors.append(error)
+            finally:
+                listener.close()
+
+        thread = threading.Thread(target=serve, daemon=True)
+        with _capture_thread_failures() as failures:
+            thread.start()
+            try:
+                yield path
+            finally:
+                release.set()
+                listener.close()
+                thread.join(timeout=10)
+        _raise_thread_failure(failures)
+        assert not thread.is_alive()
+        assert not errors
 
 
 def _chunked(values: Iterable[object], dtype: pa.DataType) -> pa.ChunkedArray:
@@ -1308,6 +1403,60 @@ def test_connection_option_validation(kwargs: dict[str, object], error: type[Exc
 
 
 @pytest.mark.parametrize(
+    ("kwargs", "error", "message"),
+    [
+        pytest.param({}, TypeError, "host and port are required", id="no-endpoint"),
+        pytest.param({"host": "localhost"}, TypeError, "host and port are required", id="no-port"),
+        pytest.param(
+            {"host": "localhost", "port": 5010, "unix_socket": "kx.5010"},
+            ValueError,
+            "cannot be combined",
+            id="tcp-endpoint-and-path",
+        ),
+        pytest.param(
+            {"host": "", "unix_socket": "kx.5010"},
+            ValueError,
+            "cannot be combined",
+            id="empty-host-and-path",
+        ),
+        pytest.param(
+            {"port": 5010, "unix_socket": "kx.5010"},
+            ValueError,
+            "cannot be combined",
+            id="port-and-path",
+        ),
+        pytest.param({"unix_socket": ""}, ValueError, "must not be empty", id="empty-path"),
+        pytest.param({"unix_socket": "kx\x00.5010"}, ValueError, "NUL", id="nul-in-path"),
+        pytest.param({"unix_socket": b"kx.5010"}, TypeError, "unix_socket", id="bytes-path"),
+        pytest.param({"unix_socket": 5010}, TypeError, "unix_socket", id="non-path"),
+        pytest.param(
+            {"unix_socket": "kx.5010", "enable_tls": True},
+            XqdbError,
+            "TLS is not supported",
+            id="tls",
+        ),
+        pytest.param(
+            {"unix_socket": "kx.5010", "tls_server_name": "kdb"},
+            XqdbError,
+            "TLS is not supported",
+            id="tls-option",
+        ),
+    ],
+)
+def test_endpoint_contradictions_are_rejected_at_construction(
+    kwargs: dict[str, object], error: type[Exception], message: str
+) -> None:
+    with pytest.raises(error, match=message):
+        Q(**kwargs)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Unix platforms support Unix-domain sockets")
+def test_unix_socket_reports_unsupported_platform_at_construction() -> None:
+    with pytest.raises(XqdbError, match="not supported on this platform"):
+        Q(unix_socket="kx.5010")
+
+
+@pytest.mark.parametrize(
     "kwargs",
     [
         pytest.param({"timeout": 0.1}, id="inherited-default"),
@@ -1713,6 +1862,89 @@ def test_idle_cancel_preserves_the_existing_connection(q: Q) -> None:
     _raise_thread_failure(failures)
     assert not thread.is_alive()
     assert not errors
+
+
+@_requires_unix_sockets
+def test_unix_socket_authenticates_queries_and_reconnects_without_tcp() -> None:
+    session = _scripted_q_session(("6*7", 42), credentials=b"alice:secret\x06\x00")
+    with _unix_q_peer(session, session) as path:
+        client = Q(unix_socket=path, user="alice", passwd="secret")  # noqa: S106 - fake peer credential
+        assert (client.host, client.port, client.unix_socket) == (None, None, str(path))
+        try:
+            with client:
+                assert client.sync("6*7") == 42
+            assert client.sync("6*7") == 42
+        finally:
+            client.disconnect()
+
+    # The error names the missing socket file: there is no TCP fallback to report instead.
+    with pytest.raises(XqdbIOError, match="No such file or directory"):
+        client.connect()
+
+
+@_requires_unix_sockets
+def test_unix_socket_handshake_inherits_the_default_read_timeout() -> None:
+    def unanswered_handshake(peer: socket.socket) -> None:
+        _read_q_credentials(peer)
+        _await_client_close(peer)
+
+    with _unix_q_peer(unanswered_handshake) as path:
+        client = Q(unix_socket=str(path), timeout=0.1)
+        try:
+            started = clock.monotonic()
+            with pytest.raises(XqdbIOError):
+                client.connect()
+            assert 0.025 < clock.monotonic() - started < 0.8
+        finally:
+            client.disconnect()
+
+
+@_requires_unix_sockets
+def test_unix_socket_zero_timeout_waits_for_cancel_then_reconnects() -> None:
+    with _unix_q_peer(_scripted_q_session(), _scripted_q_session(("6*7", 42))) as path:
+        client = Q(unix_socket=path, timeout=0)
+        started = threading.Event()
+        errors: list[XqdbIOError] = []
+
+        def receive() -> None:
+            started.set()
+            try:
+                client.receive()
+            except XqdbIOError as error:
+                errors.append(error)
+
+        client.connect()
+        receiver = threading.Thread(target=receive, daemon=True)
+        with _capture_thread_failures() as failures:
+            receiver.start()
+            try:
+                assert started.wait(timeout=1)
+                clock.sleep(0.35)
+                assert receiver.is_alive()
+                client.cancel()
+                receiver.join(timeout=2)
+                assert not receiver.is_alive()
+                assert client.sync("6*7") == 42
+            finally:
+                if receiver.is_alive():
+                    client.cancel()
+                    receiver.join(timeout=2)
+                client.disconnect()
+        _raise_thread_failure(failures)
+    assert len(errors) == 1
+
+
+@_requires_unix_sockets
+def test_unix_socket_idle_cancel_preserves_the_existing_connection() -> None:
+    with _unix_q_peer(_scripted_q_session(("1+1", 2), ("1+2", 3))) as path:
+        client = Q(unix_socket=path, timeout=5)
+        try:
+            assert client.sync("1+1") == 2
+            client.cancel()
+            # The peer accepted only once: only the existing session can answer.
+            assert client.sync("1+2") == 3
+        finally:
+            client.disconnect()
 
 
 def test_iter_batches_uses_bounded_offset_count_contract() -> None:

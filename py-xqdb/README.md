@@ -93,34 +93,35 @@ conn = xqdb.Q(
 
 ### Connection Parameters
 
-| Parameter                   | Type                   | Default     | Description                                                                                     |
-| --------------------------- | ---------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
-| `host`                      | `str`                  |             | Hostname of the q process                                                                       |
-| `port`                      | `int`                  |             | Port of the q process                                                                           |
-| `backend`                   | `str`                  | `"pyarrow"` | Installed Narwhals output backend; tested with `"pyarrow"`, `"pandas"`, and `"polars"`          |
-| `user`                      | `str`                  | `""`        | q username; empty unless explicitly supplied                                                    |
-| `passwd`                    | `str`                  | `""`        | Password                                                                                        |
-| `enable_tls`                | `bool`                 | `False`     | Enable TLS with platform hostname verification                                                  |
-| `retries`                   | `int`                  | `0`         | Additional connection-establishment attempts (0–31), with exponential backoff before each retry |
-| `timeout`                   | `float`                | `30.0`      | Default TCP connect/read/write timeout in seconds; accepts fractions, `0` disables it           |
-| `symbol_encoding`           | `str`                  | `"strict"`  | Native-mode invalid UTF-8 policy: `"strict"` fails, `"lossy"` uses U+FFFD                       |
-| `lossless`                  | `bool`                 | `False`     | Return immutable `XqdbQValue` values instead of native conversions                              |
-| `compression`               | `str`                  | `"auto"`    | Outbound compression policy: `"auto"`, `"on"`, or `"off"`                                       |
-| `compression_threshold`     | `int`                  | `10000000`  | Positive outbound message size threshold in bytes for automatic compression                     |
-| `connect_timeout`           | `float \| None`        | `None`      | TCP connect timeout in seconds (not DNS); `None` inherits `timeout`, explicit `0` disables it   |
-| `read_timeout`              | `float \| None`        | `None`      | Read timeout in seconds; `None` inherits `timeout`, explicit `0` disables it                    |
-| `write_timeout`             | `float \| None`        | `None`      | Write timeout in seconds; `None` inherits `timeout`, explicit `0` disables it                   |
-| `max_message_bytes`         | `int \| None`          | `None`      | Positive maximum inbound uncompressed IPC frame size, including its header                      |
-| `max_pending_notifications` | `int`                  | `1024`      | Positive bound for async notifications retained while a sync response is awaited                |
-| `tls_ca`                    | `str \| bytes \| None` | `None`      | Additional trusted CA certificate(s) as PEM                                                     |
-| `tls_cert`                  | `str \| bytes \| None` | `None`      | Client certificate chain as PEM; must be paired with `tls_key`                                  |
-| `tls_key`                   | `str \| bytes \| None` | `None`      | Client private key as PEM; must be paired with `tls_cert`                                       |
-| `tls_server_name`           | `str \| None`          | `None`      | Verification name override; defaults to `host`                                                  |
+| Parameter                   | Type                              | Default     | Description                                                                                     |
+| --------------------------- | --------------------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
+| `host`                      | `str \| None`                     | `None`      | TCP hostname; omitted or empty selects loopback when a TCP port is supplied                     |
+| `port`                      | `int \| None`                     | `None`      | TCP port; required unless `unix_socket` is supplied                                             |
+| `unix_socket`               | `str \| os.PathLike[str] \| None` | `None`      | Unix socket path, or `@name` for a Linux/Android abstract socket; excludes TCP and TLS options  |
+| `backend`                   | `str`                             | `"pyarrow"` | Installed Narwhals output backend; tested with `"pyarrow"`, `"pandas"`, and `"polars"`          |
+| `user`                      | `str`                             | `""`        | q username; empty unless explicitly supplied                                                    |
+| `passwd`                    | `str`                             | `""`        | Password                                                                                        |
+| `enable_tls`                | `bool`                            | `False`     | Enable TLS with platform hostname verification                                                  |
+| `retries`                   | `int`                             | `0`         | Additional connection-establishment attempts (0–31), with exponential backoff before each retry |
+| `timeout`                   | `float`                           | `30.0`      | Default socket connect/read/write timeout in seconds; accepts fractions, `0` disables it        |
+| `symbol_encoding`           | `str`                             | `"strict"`  | Native-mode invalid UTF-8 policy: `"strict"` fails, `"lossy"` uses U+FFFD                       |
+| `lossless`                  | `bool`                            | `False`     | Return immutable `XqdbQValue` values instead of native conversions                              |
+| `compression`               | `str`                             | `"auto"`    | Outbound compression policy: `"auto"`, `"on"`, or `"off"`                                       |
+| `compression_threshold`     | `int`                             | `10000000`  | Positive outbound message size threshold in bytes for automatic compression                     |
+| `connect_timeout`           | `float \| None`                   | `None`      | Socket connect timeout in seconds (not DNS); `None` inherits `timeout`, `0` disables it         |
+| `read_timeout`              | `float \| None`                   | `None`      | Read timeout in seconds; `None` inherits `timeout`, explicit `0` disables it                    |
+| `write_timeout`             | `float \| None`                   | `None`      | Write timeout in seconds; `None` inherits `timeout`, explicit `0` disables it                   |
+| `max_message_bytes`         | `int \| None`                     | `None`      | Positive maximum inbound uncompressed IPC frame size, including its header                      |
+| `max_pending_notifications` | `int`                             | `1024`      | Positive bound for async notifications retained while a sync response is awaited                |
+| `tls_ca`                    | `str \| bytes \| None`            | `None`      | Additional trusted CA certificate(s) as PEM                                                     |
+| `tls_cert`                  | `str \| bytes \| None`            | `None`      | Client certificate chain as PEM; must be paired with `tls_key`                                  |
+| `tls_key`                   | `str \| bytes \| None`            | `None`      | Client private key as PEM; must be paired with `tls_cert`                                       |
+| `tls_server_name`           | `str \| None`                     | `None`      | Verification name override; defaults to `host`                                                  |
 
 All timeout values must be finite and between `0` and `86_400` seconds (24 hours),
 inclusive. Python uses seconds; Node uses milliseconds. Both bindings default to
 30 seconds, preserve fractional values, and let omitted granular timeouts inherit
-`timeout`. These are TCP connection and socket I/O limits, not whole-query
+`timeout`. These are socket connection and I/O limits, not whole-query
 deadlines; queueing and system DNS resolution are not bounded by them.
 
 **Compatibility change:** earlier Python releases defaulted to no timeout. Pass
@@ -130,6 +131,31 @@ nanosecond rather than becoming zero. Actual socket timing is subject to the
 operating system's resolution.
 
 q IPC authentication sends credentials in cleartext when TLS is disabled. Enable TLS for credentialed connections unless another trusted transport already protects the socket. TLS settings are rejected unless `enable_tls=True`; custom CA trust does not alter the operating-system trust store.
+
+### Unix-domain sockets
+
+Connect to a local q process without TCP:
+
+```python
+with xqdb.Q(unix_socket="/tmp/kx.5010") as local:
+    print(local.sync("6*7"))
+```
+
+Use a filesystem path on macOS or another Unix platform. Modern q on Linux uses
+an abstract socket by default; select its name with
+`unix_socket="@/tmp/kx.5010"`. The `@` prefix is supported only on Linux/Android.
+q's `QUDSPATH` can change or disable its Unix endpoint; see
+[q's Unix socket setup](https://code.kx.com/q/basics/listening-port/#unix-domain-socket).
+
+Do not combine `unix_socket` with `host`, `port`, enabled TLS, or TLS settings.
+Unsupported platforms (including Windows) fail explicitly; there is no TCP
+fallback. `conn.unix_socket` contains the normalized path, while `conn.host` and
+`conn.port` are `None` for Unix connections.
+
+Authentication, retries, phase timeouts, cancellation, and reconnects retain the
+TCP behavior. Unix paths require no DNS lookup and count as local for automatic
+compression. Unix sockets are not encrypted: trust the local endpoint and its
+access controls; abstract sockets do not have filesystem permission checks.
 
 ### Narwhals DataFrames and Backend Selection
 
@@ -248,15 +274,20 @@ immediately and prevents another attempt for that operation. Calling it while
 idle preserves the healthy session, and a later independent call remains
 usable.
 
-TCP connection attempts are bounded by `connect_timeout`; cancellation is
+Socket connection attempts are bounded by `connect_timeout`; cancellation is
 observed when that operating-system call returns and prevents any retry. DNS
 resolution remains controlled by the operating-system resolver and is **not**
 bounded by `connect_timeout`, and cancellation cannot wake DNS resolution or a
-TCP connect call before a socket has been attached.
+socket connect call before a socket has been attached. Unix endpoints skip DNS.
 
 `disconnect()` signals the same cancellation before waiting for active I/O to
 unwind and clean up; it is idempotent. This makes blocking calls compatible with
 an executor, but the API does not claim native `asyncio` I/O.
+
+For an idle TLS connection, normal disconnect attempts `close_notify` before
+closing TCP. This best-effort flush is capped at one second and any shorter
+enabled write timeout, even when ordinary I/O timeouts are disabled. Cancellation,
+protocol errors, and object destruction close the socket immediately instead.
 
 `retries` applies only to connection establishment and counts **additional**
 attempts: `retries=1` permits two `connect` attempts and waits one second only

@@ -2,6 +2,7 @@
 
 import logging
 import math
+import os
 import socket
 import threading
 from collections.abc import Iterator
@@ -57,6 +58,19 @@ def _validate_optional_timeout(name: str, value: object) -> float | None:
     return _validate_timeout(name, value)
 
 
+def _unix_socket_path(value: str | os.PathLike[str] | None) -> str | None:
+    if value is None:
+        return None
+    message = "unix_socket must be str or os.PathLike[str]"
+    try:
+        path = os.fspath(value)
+    except TypeError as error:
+        raise TypeError(message) from error
+    if not isinstance(path, str):
+        raise TypeError(message)
+    return path
+
+
 def _convert_args(args: tuple[object, ...], *, maximum: int = 8) -> tuple[object, ...]:
     if len(args) > maximum:
         message = f"q functions accept at most {maximum} arguments"
@@ -70,8 +84,8 @@ class Q:
 
     def __init__(
         self,
-        host: str,
-        port: int,
+        host: str | None = None,
+        port: int | None = None,
         user: str = "",
         passwd: str = "",
         enable_tls: bool = False,
@@ -80,6 +94,7 @@ class Q:
         backend: str = "pyarrow",
         symbol_encoding: str = "strict",
         *,
+        unix_socket: str | os.PathLike[str] | None = None,
         lossless: bool = False,
         compression: str = "auto",
         compression_threshold: int = 10_000_000,
@@ -109,7 +124,8 @@ class Q:
         max_pending_notifications = _validate_count(
             "max_pending_notifications", max_pending_notifications, minimum=1
         )
-        if (not host) or host == socket.gethostname():
+        unix_socket = _unix_socket_path(unix_socket)
+        if unix_socket is None and (not host or host == socket.gethostname()):
             host = "127.0.0.1"
         self.host = host
         self.port = port
@@ -125,6 +141,7 @@ class Q:
             enable_tls,
             timeout,
             6,
+            unix_socket=unix_socket,
             lossless=lossless,
             compression=compression,
             compression_threshold=compression_threshold,
@@ -138,6 +155,7 @@ class Q:
             tls_key=tls_key,
             tls_server_name=tls_server_name,
         )
+        self.unix_socket = unix_socket
         self._abort = self.q.abort_handle()
         self._cancel_condition = threading.Condition()
         self._cancel_generation = 0

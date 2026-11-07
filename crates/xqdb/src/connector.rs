@@ -10,12 +10,42 @@ use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::io::{self, Read as IoRead, Write as IoWrite};
 use std::net::{Shutdown, SocketAddr, TcpStream, ToSocketAddrs};
+#[cfg(unix)]
+use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-pub(crate) trait QStream: IoRead + IoWrite {}
+pub(crate) trait QStream: IoRead + IoWrite {
+    fn close_notify(&mut self, _timeout: Duration) -> io::Result<()> {
+        Ok(())
+    }
+}
 
-impl<S: IoRead + IoWrite> QStream for S {}
+impl QStream for SharedSocket {}
+
+impl QStream for StreamOwned<rustls::ClientConnection, SharedSocket> {
+    fn close_notify(&mut self, timeout: Duration) -> io::Result<()> {
+        self.conn.send_close_notify();
+        let started = Instant::now();
+        while self.conn.wants_write() {
+            let remaining = timeout
+                .checked_sub(started.elapsed())
+                .filter(|remaining| !remaining.is_zero())
+                .ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::TimedOut, "TLS shutdown flush timed out")
+                })?;
+            self.sock.set_write_timeout(Some(remaining))?;
+            match self.conn.write_tls(&mut self.sock) {
+                Ok(0) => return Err(io::ErrorKind::WriteZero.into()),
+                Ok(_) => (),
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Sized `Read` adapter over the boxed stream so `Read` combinators requiring `Self: Sized`
 /// (e.g. `take`) apply to it.
@@ -27,22 +57,73 @@ impl IoRead for StreamReader<'_> {
     }
 }
 
-#[derive(Debug)]
-struct SharedTcpStream(Arc<TcpStream>);
+#[derive(Clone, Debug)]
+enum SharedSocket {
+    Tcp(Arc<TcpStream>),
+    #[cfg(unix)]
+    Unix(Arc<UnixStream>),
+}
 
-impl IoRead for SharedTcpStream {
-    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        self.0.as_ref().read(buffer)
+impl SharedSocket {
+    fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        match self {
+            Self::Tcp(stream) => stream.shutdown(how),
+            #[cfg(unix)]
+            Self::Unix(stream) => stream.shutdown(how),
+        }
+    }
+
+    fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        match self {
+            Self::Tcp(stream) => stream.set_read_timeout(timeout),
+            #[cfg(unix)]
+            Self::Unix(stream) => stream.set_read_timeout(timeout),
+        }
+    }
+
+    fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        match self {
+            Self::Tcp(stream) => stream.set_write_timeout(timeout),
+            #[cfg(unix)]
+            Self::Unix(stream) => stream.set_write_timeout(timeout),
+        }
     }
 }
 
-impl IoWrite for SharedTcpStream {
+#[cfg(windows)]
+impl std::os::windows::io::AsRawSocket for SharedSocket {
+    fn as_raw_socket(&self) -> std::os::windows::io::RawSocket {
+        match self {
+            Self::Tcp(stream) => std::os::windows::io::AsRawSocket::as_raw_socket(stream.as_ref()),
+        }
+    }
+}
+
+impl IoRead for SharedSocket {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        match self {
+            Self::Tcp(stream) => stream.as_ref().read(buffer),
+            #[cfg(unix)]
+            Self::Unix(stream) => stream.as_ref().read(buffer),
+        }
+    }
+}
+
+impl IoWrite for SharedSocket {
     fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-        self.0.as_ref().write(buffer)
+        match self {
+            Self::Tcp(stream) => stream.as_ref().write(buffer),
+            #[cfg(unix)]
+            Self::Unix(stream) => stream.as_ref().write(buffer),
+        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.0.as_ref().flush()
+        match self {
+            Self::Tcp(stream) => stream.as_ref().flush(),
+            #[cfg(unix)]
+            Self::Unix(stream) => stream.as_ref().flush(),
+        }
     }
 }
 
@@ -55,7 +136,7 @@ struct AbortState {
 #[derive(Debug)]
 struct AbortOperation {
     id: u64,
-    stream: Option<Arc<TcpStream>>,
+    stream: Option<SharedSocket>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -69,7 +150,7 @@ struct ActiveIoGuard {
 }
 
 impl ActiveIoGuard {
-    fn attach_stream(&self, stream: Arc<TcpStream>) -> bool {
+    fn attach_stream(&self, stream: SharedSocket) -> bool {
         let attached = {
             let mut state = self
                 .state
@@ -77,7 +158,7 @@ impl ActiveIoGuard {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             match state.active_operation.as_mut() {
                 Some(operation) if operation.id == self.id => {
-                    operation.stream = Some(Arc::clone(&stream));
+                    operation.stream = Some(stream.clone());
                     true
                 }
                 _ => false,
@@ -199,6 +280,8 @@ pub enum CompressionMode {
 /// TLS byte fields contain PEM data. Client certificate and key must be supplied together.
 #[derive(Clone)]
 pub struct ConnectorSettings {
+    /// Unix socket path, or `@name` for the Linux/Android abstract namespace; overrides TCP.
+    pub unix_socket: Option<PathBuf>,
     pub value_mode: ValueMode,
     pub compression: CompressionMode,
     pub compression_threshold: usize,
@@ -216,6 +299,7 @@ pub struct ConnectorSettings {
 impl Default for ConnectorSettings {
     fn default() -> Self {
         Self {
+            unix_socket: None,
             value_mode: ValueMode::Native,
             compression: CompressionMode::Auto,
             compression_threshold: 10_000_000,
@@ -243,7 +327,7 @@ pub struct Connector {
     pub timeout: Duration,
     pub symbol_encoding: SymbolEncoding,
     stream: Option<Box<dyn QStream + Send + Sync>>,
-    tcp_stream: Option<Arc<TcpStream>>,
+    socket: Option<SharedSocket>,
     abort_handle: ConnectorAbortHandle,
     settings: ConnectorSettings,
     pending_notifications: VecDeque<Result<K, XqdbError>>,
@@ -283,6 +367,8 @@ const MAX_RETAINED_BUFFER_BYTES: usize = 256 * 1024 * 1024;
 /// Table bodies at least this large are decoded column by column while the rest of the frame is
 /// still arriving; below it the decode is too short to be worth a thread-pool hand-off.
 const PIPELINE_MIN_BODY_BYTES: usize = 256 * 1024;
+/// Normal disconnect may flush a TLS alert, but never wait indefinitely for an unresponsive peer.
+const TLS_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Splits an IPC message length into the 40-bit form the q header carries, returning the high byte
 /// written at index 3 and the little-endian u32 written at index 4..8.
@@ -780,6 +866,55 @@ fn connect_to_addresses(
     }))
 }
 
+#[cfg(unix)]
+fn unix_socket_address(path: &std::path::Path) -> io::Result<socket2::SockAddr> {
+    use std::os::unix::ffi::OsStrExt;
+
+    let bytes = path.as_os_str().as_bytes();
+    if bytes.contains(&0) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "unix_socket must not contain NUL bytes",
+        ));
+    }
+    let Some(name) = bytes.strip_prefix(b"@") else {
+        return socket2::SockAddr::unix(path);
+    };
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    {
+        // socket2 accepts the kernel's leading-NUL representation without a terminating NUL.
+        let mut address = [0u8; std::mem::size_of::<socket2::SockAddrStorage>()];
+        if name.is_empty() || name.len() >= address.len() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "abstract Unix socket name is empty or too long",
+            ));
+        }
+        address[1..=name.len()].copy_from_slice(name);
+        socket2::SockAddr::unix(std::ffi::OsStr::from_bytes(&address[..=name.len()]))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    {
+        let _ = name;
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "abstract Unix sockets are supported only on Linux and Android",
+        ))
+    }
+}
+
+#[cfg(unix)]
+fn connect_to_unix(path: &std::path::Path, timeout: Duration) -> io::Result<UnixStream> {
+    let address = unix_socket_address(path)?;
+    let socket = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)?;
+    if timeout.is_zero() {
+        socket.connect(&address)?;
+    } else {
+        socket.connect_timeout(&address, timeout)?;
+    }
+    Ok(socket.into())
+}
+
 fn parse_certificates(
     pem: &[u8],
     description: &str,
@@ -916,7 +1051,7 @@ impl Connector {
             password: password.to_string(),
             enable_tls,
             stream: None,
-            tcp_stream: None,
+            socket: None,
             abort_handle: ConnectorAbortHandle::default(),
             is_local,
             timeout: Duration::new(timeout, 0),
@@ -948,6 +1083,27 @@ impl Connector {
             || settings.tls_cert.is_some()
             || settings.tls_key.is_some()
             || settings.tls_server_name.is_some();
+        if let Some(path) = settings.unix_socket.as_deref() {
+            if self.enable_tls || has_tls_settings {
+                return Err(XqdbError::Err(
+                    "TLS is not supported with Unix-domain sockets".to_owned(),
+                ));
+            }
+            #[cfg(unix)]
+            {
+                if path.as_os_str().is_empty() {
+                    return Err(XqdbError::Err("unix_socket must not be empty".to_owned()));
+                }
+                unix_socket_address(path).map_err(XqdbError::IOError)?;
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = path;
+                return Err(XqdbError::Err(
+                    "Unix-domain sockets are not supported on this platform".to_owned(),
+                ));
+            }
+        }
         if has_tls_settings && !self.enable_tls {
             return Err(XqdbError::Err(
                 "TLS settings require enable_tls=true".to_owned(),
@@ -967,6 +1123,8 @@ impl Connector {
             )?;
             tls_client_config(&settings)?;
         }
+        self.is_local = settings.unix_socket.is_some()
+            || matches!(self.host.as_str(), "127.0.0.1" | "localhost");
         self.settings = settings;
         Ok(())
     }
@@ -1019,8 +1177,8 @@ impl Connector {
 
     pub fn send(&mut self, msg_type: MsgType, expr: &str, args: &[K]) -> Result<(), XqdbError> {
         let active_io = self.abort_handle.begin_operation();
-        if let Some(stream) = self.tcp_stream.as_ref() {
-            active_io.attach_stream(Arc::clone(stream));
+        if let Some(stream) = self.socket.as_ref() {
+            active_io.attach_stream(stream.clone());
         }
         let result = self.send_inner(msg_type, expr, args);
         self.finish_operation(active_io, result)
@@ -1121,8 +1279,8 @@ impl Connector {
             return notification;
         }
         let active_io = self.abort_handle.begin_operation();
-        if let Some(stream) = self.tcp_stream.as_ref() {
-            active_io.attach_stream(Arc::clone(stream));
+        if let Some(stream) = self.socket.as_ref() {
+            active_io.attach_stream(stream.clone());
         }
         let result = self.receive_inner();
         self.finish_operation(active_io, result)
@@ -1190,7 +1348,7 @@ impl Connector {
     /// path relies on, so it is rebuilt from scratch by the next connection.
     fn disconnect_after_protocol_error(&mut self) {
         self.receive_buffer = Vec::new();
-        if let Some(stream) = self.tcp_stream.take() {
+        if let Some(stream) = self.socket.take() {
             let _ = stream.shutdown(Shutdown::Both);
         }
         self.stream = None;
@@ -1204,12 +1362,17 @@ impl Connector {
 
     fn connect_inner(&mut self, active_io: &ActiveIoGuard) -> Result<(), XqdbError> {
         if self.stream.is_some() {
-            if let Some(stream) = self.tcp_stream.as_ref() {
-                active_io.attach_stream(Arc::clone(stream));
+            if let Some(stream) = self.socket.as_ref() {
+                active_io.attach_stream(stream.clone());
             }
             return Ok(());
         }
 
+        if self.enable_tls && self.settings.unix_socket.is_some() {
+            return Err(XqdbError::Err(
+                "TLS is not supported with Unix-domain sockets".to_owned(),
+            ));
+        }
         let tls = if self.enable_tls {
             let server_name = self
                 .settings
@@ -1223,38 +1386,53 @@ impl Connector {
         } else {
             None
         };
-        let mut addresses = (self.host.as_str(), self.port)
-            .to_socket_addrs()
-            .map_err(XqdbError::IOError)?
-            .peekable();
-        if addresses.peek().is_none() {
-            return Err(XqdbError::FailedToConnectErr(
-                "host resolved to no socket addresses".to_owned(),
-            ));
-        }
         let connect_timeout = self.settings.connect_timeout.unwrap_or(self.timeout);
-        let tcp_stream =
-            connect_to_addresses(addresses, connect_timeout).map_err(XqdbError::IOError)?;
-        tcp_stream.set_nodelay(true)?;
-        configure_receive_buffer(&tcp_stream)?;
-        tcp_stream
+        let socket = if let Some(path) = self.settings.unix_socket.as_deref() {
+            #[cfg(unix)]
+            {
+                SharedSocket::Unix(Arc::new(
+                    connect_to_unix(path, connect_timeout).map_err(XqdbError::IOError)?,
+                ))
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = path;
+                return Err(XqdbError::Err(
+                    "Unix-domain sockets are not supported on this platform".to_owned(),
+                ));
+            }
+        } else {
+            let mut addresses = (self.host.as_str(), self.port)
+                .to_socket_addrs()
+                .map_err(XqdbError::IOError)?
+                .peekable();
+            if addresses.peek().is_none() {
+                return Err(XqdbError::FailedToConnectErr(
+                    "host resolved to no socket addresses".to_owned(),
+                ));
+            }
+            let stream =
+                connect_to_addresses(addresses, connect_timeout).map_err(XqdbError::IOError)?;
+            stream.set_nodelay(true)?;
+            configure_receive_buffer(&stream)?;
+            SharedSocket::Tcp(Arc::new(stream))
+        };
+        socket
             .set_read_timeout(effective_socket_timeout(
                 self.settings.read_timeout,
                 self.timeout,
             ))
             .map_err(XqdbError::IOError)?;
-        tcp_stream
+        socket
             .set_write_timeout(effective_socket_timeout(
                 self.settings.write_timeout,
                 self.timeout,
             ))
             .map_err(XqdbError::IOError)?;
 
-        let tcp_stream = Arc::new(tcp_stream);
-        if !active_io.attach_stream(Arc::clone(&tcp_stream)) {
+        if !active_io.attach_stream(socket.clone()) {
             return Err(operation_aborted_error());
         }
-        let shared_stream = SharedTcpStream(Arc::clone(&tcp_stream));
         let result = match tls {
             Some((server_name, config)) => {
                 rustls::ClientConnection::new(Arc::new(config), server_name)
@@ -1262,36 +1440,46 @@ impl Connector {
                     .and_then(|connection| {
                         self.install_authenticated_stream(StreamOwned::new(
                             connection,
-                            shared_stream,
+                            socket.clone(),
                         ))
                     })
             }
-            None => self.install_authenticated_stream(shared_stream),
+            None => self.install_authenticated_stream(socket.clone()),
         };
 
         if result.is_err() {
-            let _ = tcp_stream.shutdown(Shutdown::Both);
+            let _ = socket.shutdown(Shutdown::Both);
             self.stream = None;
         } else {
-            self.tcp_stream = Some(tcp_stream);
+            self.socket = Some(socket);
         }
         result
     }
 
+    /// Best-effort TLS close notification, bounded by one second and any shorter write timeout.
+    /// Cancellation, protocol errors and drop always use immediate socket shutdown instead.
     pub fn shutdown(&mut self) -> Result<(), XqdbError> {
-        if self.stream.is_none() {
+        let Some(mut stream) = self.stream.take() else {
             return Err(XqdbError::NotConnectedErr());
+        };
+        let active_io = self.abort_handle.begin_operation();
+        if let Some(socket) = self.socket.as_ref() {
+            if active_io.attach_stream(socket.clone()) {
+                let timeout = effective_socket_timeout(self.settings.write_timeout, self.timeout)
+                    .unwrap_or(TLS_SHUTDOWN_TIMEOUT)
+                    .min(TLS_SHUTDOWN_TIMEOUT);
+                let _ = stream.close_notify(timeout);
+            }
         }
-        let result = match self.tcp_stream.take() {
-            Some(stream) => match stream.shutdown(Shutdown::Both) {
+        let result = match self.socket.take() {
+            Some(socket) => match socket.shutdown(Shutdown::Both) {
                 Ok(()) => Ok(()),
                 Err(error) if error.kind() == io::ErrorKind::NotConnected => Ok(()),
                 Err(error) => Err(XqdbError::IOError(error)),
             },
             None => Ok(()),
         };
-        self.stream = None;
-        result
+        self.finish_operation(active_io, result)
     }
 
     fn install_authenticated_stream<S>(&mut self, mut stream: S) -> Result<(), XqdbError>
@@ -1305,8 +1493,8 @@ impl Connector {
 
     pub fn execute(&mut self, expr: &str, args: &[K]) -> Result<K, XqdbError> {
         let active_io = self.abort_handle.begin_operation();
-        if let Some(stream) = self.tcp_stream.as_ref() {
-            active_io.attach_stream(Arc::clone(stream));
+        if let Some(stream) = self.socket.as_ref() {
+            active_io.attach_stream(stream.clone());
         }
         let result = self.execute_inner(&active_io, expr, args);
         self.finish_operation(active_io, result)
@@ -1350,8 +1538,8 @@ impl Connector {
 
     pub fn execute_async(&mut self, expr: &str, args: &[K]) -> Result<(), XqdbError> {
         let active_io = self.abort_handle.begin_operation();
-        if let Some(stream) = self.tcp_stream.as_ref() {
-            active_io.attach_stream(Arc::clone(stream));
+        if let Some(stream) = self.socket.as_ref() {
+            active_io.attach_stream(stream.clone());
         }
         let result = if self.stream.is_none() {
             self.connect_inner(&active_io)
@@ -1434,6 +1622,10 @@ IOLH4W91cG+dGNYdUb8dceyjtwcbL4A1XYPkf9xIZHt09QtY5BkLCUK3FZT4L/SX
         output: Arc<Mutex<Vec<u8>>>,
     }
 
+    impl QStream for MemoryStream {}
+
+    impl QStream for Cursor<Vec<u8>> {}
+
     impl IoRead for MemoryStream {
         fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
             self.input.read(buffer)
@@ -1483,7 +1675,7 @@ IOLH4W91cG+dGNYdUb8dceyjtwcbL4A1XYPkf9xIZHt09QtY5BkLCUK3FZT4L/SX
         response[4..8].copy_from_slice(&(total_length as u32).to_le_bytes());
         response
     }
-    fn server_authenticate(stream: &mut TcpStream) {
+    fn server_authenticate(stream: &mut (impl Read + Write)) {
         let mut credential = [0u8; 3];
         stream
             .read_exact(&mut credential)
@@ -1493,7 +1685,7 @@ IOLH4W91cG+dGNYdUb8dceyjtwcbL4A1XYPkf9xIZHt09QtY5BkLCUK3FZT4L/SX
             .expect("server should acknowledge authentication");
     }
 
-    fn server_read_frame(stream: &mut TcpStream) {
+    fn server_read_frame(stream: &mut impl Read) {
         let mut header = [0u8; IPC_HEADER_LENGTH];
         stream
             .read_exact(&mut header)
@@ -2187,6 +2379,8 @@ IOLH4W91cG+dGNYdUb8dceyjtwcbL4A1XYPkf9xIZHt09QtY5BkLCUK3FZT4L/SX
         chunk: usize,
     }
 
+    impl QStream for ChunkedStream {}
+
     impl IoRead for ChunkedStream {
         fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
             let limit = buffer.len().min(self.chunk);
@@ -2382,7 +2576,7 @@ IOLH4W91cG+dGNYdUb8dceyjtwcbL4A1XYPkf9xIZHt09QtY5BkLCUK3FZT4L/SX
         let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0))).unwrap();
         let client = Arc::new(TcpStream::connect(listener.local_addr().unwrap()).unwrap());
         let (mut server, _) = listener.accept().unwrap();
-        assert!(!active_io.attach_stream(client));
+        assert!(!active_io.attach_stream(SharedSocket::Tcp(client)));
         assert!(active_io.finish());
         let mut byte = [0u8];
         assert_eq!(server.read(&mut byte).unwrap_or(0), 0);
@@ -2397,12 +2591,283 @@ IOLH4W91cG+dGNYdUb8dceyjtwcbL4A1XYPkf9xIZHt09QtY5BkLCUK3FZT4L/SX
             let client = Arc::new(TcpStream::connect(address).unwrap());
             let (mut server, _) = listener.accept().unwrap();
             let active_io = handle.begin_operation();
-            assert!(active_io.attach_stream(client));
+            assert!(active_io.attach_stream(SharedSocket::Tcp(client)));
             handle.abort().expect("active stream should abort");
             assert!(active_io.finish(), "active operation must observe abort");
             let mut byte = [0u8];
             assert_eq!(server.read(&mut byte).unwrap_or(0), 0);
         }
         handle.abort().expect("idle abort should remain idempotent");
+    }
+
+    #[derive(Debug)]
+    struct PinnedTestCertificate(CertificateDer<'static>);
+
+    impl rustls::client::danger::ServerCertVerifier for PinnedTestCertificate {
+        fn verify_server_cert(
+            &self,
+            end_entity: &CertificateDer<'_>,
+            _intermediates: &[CertificateDer<'_>],
+            _server_name: &ServerName<'_>,
+            _ocsp_response: &[u8],
+            _now: rustls::pki_types::UnixTime,
+        ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+            if end_entity != &self.0 {
+                return Err(rustls::Error::General(
+                    "unexpected test certificate".to_owned(),
+                ));
+            }
+            Ok(rustls::client::danger::ServerCertVerified::assertion())
+        }
+
+        fn verify_tls12_signature(
+            &self,
+            message: &[u8],
+            certificate: &CertificateDer<'_>,
+            signature: &rustls::DigitallySignedStruct,
+        ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+            rustls::crypto::verify_tls12_signature(
+                message,
+                certificate,
+                signature,
+                &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+            )
+        }
+
+        fn verify_tls13_signature(
+            &self,
+            message: &[u8],
+            certificate: &CertificateDer<'_>,
+            signature: &rustls::DigitallySignedStruct,
+        ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+            rustls::crypto::verify_tls13_signature(
+                message,
+                certificate,
+                signature,
+                &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+            )
+        }
+
+        fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+            rustls::crypto::ring::default_provider()
+                .signature_verification_algorithms
+                .supported_schemes()
+        }
+    }
+
+    fn tls_test_pair() -> (
+        StreamOwned<rustls::ClientConnection, SharedSocket>,
+        StreamOwned<rustls::ServerConnection, TcpStream>,
+    ) {
+        let certificates = parse_certificates(TEST_CERT_PEM, "test certificate").unwrap();
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let client_config = ClientConfig::builder_with_provider(Arc::clone(&provider))
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(PinnedTestCertificate(
+                certificates[0].clone(),
+            )))
+            .with_no_client_auth();
+        let server_config = rustls::ServerConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(certificates, parse_private_key(TEST_KEY_PEM).unwrap())
+            .unwrap();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
+        let client = StreamOwned::new(
+            rustls::ClientConnection::new(
+                Arc::new(client_config),
+                ServerName::try_from("localhost").unwrap(),
+            )
+            .unwrap(),
+            SharedSocket::Tcp(Arc::new(client)),
+        );
+        let server = StreamOwned::new(
+            rustls::ServerConnection::new(Arc::new(server_config)).unwrap(),
+            server,
+        );
+        (client, server)
+    }
+
+    #[test]
+    fn normal_tls_shutdown_delivers_close_notify() {
+        let (client, mut server) = tls_test_pair();
+        let peer = thread::spawn(move || {
+            server_read_frame(&mut server);
+            server
+                .write_all(&generate_j6_ipc_msg(MsgType::Response, false, K::I64(42)).unwrap())
+                .unwrap();
+            assert_eq!(
+                server
+                    .read(&mut [0u8])
+                    .expect("TLS close_notify, not truncation"),
+                0,
+            );
+        });
+        let mut connector = Connector::new("", 0, "", "", true, 0, 6);
+        connector.socket = Some(client.sock.clone());
+        connector.stream = Some(Box::new(client));
+        assert_eq!(connector.execute("6*7", &[]).unwrap(), K::I64(42));
+        connector.shutdown().unwrap();
+        peer.join().unwrap();
+    }
+
+    #[test]
+    fn tls_cancellation_keeps_the_immediate_hard_shutdown_path() {
+        let (client, mut server) = tls_test_pair();
+        let (request_read, request_observed) = std::sync::mpsc::channel();
+        let peer = thread::spawn(move || {
+            server_read_frame(&mut server);
+            request_read.send(()).unwrap();
+            let error = server
+                .read(&mut [0u8])
+                .expect_err("no graceful alert on cancellation");
+            assert!(matches!(
+                error.kind(),
+                io::ErrorKind::UnexpectedEof
+                    | io::ErrorKind::ConnectionReset
+                    | io::ErrorKind::ConnectionAborted
+            ));
+        });
+        let mut connector = Connector::new("", 0, "", "", true, 0, 6);
+        connector.socket = Some(client.sock.clone());
+        connector.stream = Some(Box::new(client));
+        let abort = connector.abort_handle();
+        let worker = thread::spawn(move || connector.execute("6*7", &[]));
+        request_observed
+            .recv_timeout(Duration::from_secs(3))
+            .unwrap();
+        let started = Instant::now();
+        abort.abort().unwrap();
+        assert!(matches!(worker.join().unwrap(), Err(XqdbError::IOError(_))));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        peer.join().unwrap();
+    }
+
+    #[test]
+    fn tls_close_notify_flush_is_bounded_when_the_peer_stops_reading() {
+        let (mut client, mut server) = tls_test_pair();
+        socket2::SockRef::from(&server.sock)
+            .set_recv_buffer_size(4096)
+            .unwrap();
+        match &client.sock {
+            SharedSocket::Tcp(socket) => {
+                socket2::SockRef::from(socket.as_ref())
+                    .set_send_buffer_size(4096)
+                    .unwrap();
+            }
+            #[cfg(unix)]
+            SharedSocket::Unix(_) => unreachable!(),
+        }
+        let (release, released) = std::sync::mpsc::channel();
+        let peer = thread::spawn(move || {
+            server.read_exact(&mut [0u8]).unwrap();
+            server.write_all(&[1]).unwrap();
+            released.recv_timeout(Duration::from_secs(3)).unwrap();
+        });
+        client.write_all(&[1]).unwrap();
+        client.read_exact(&mut [0u8]).unwrap();
+        client.conn.set_buffer_limit(None);
+        client
+            .conn
+            .writer()
+            .write_all(&vec![0u8; 4 * 1024 * 1024])
+            .unwrap();
+        let started = Instant::now();
+        let error = client
+            .close_notify(Duration::from_millis(50))
+            .expect_err("a non-reading peer must exhaust the flush deadline");
+        let elapsed = started.elapsed();
+        release.send(()).unwrap();
+        assert!(matches!(
+            error.kind(),
+            io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+        ));
+        assert!(elapsed < Duration::from_secs(1), "flush took {elapsed:?}");
+        peer.join().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_write_timeout_disconnects_and_allows_reconnect_without_dns() {
+        use std::os::unix::net::UnixListener;
+
+        struct SocketPath(PathBuf);
+        impl Drop for SocketPath {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+        let path = std::env::temp_dir().join(format!("xq-uds-{}.sock", std::process::id()));
+        let listener = UnixListener::bind(&path).unwrap();
+        let _cleanup = SocketPath(path.clone());
+        let peer = thread::spawn(move || {
+            let (mut first, _) = listener.accept().unwrap();
+            server_authenticate(&mut first);
+            let (mut second, _) = listener.accept().unwrap();
+            server_authenticate(&mut second);
+            server_read_frame(&mut second);
+            second
+                .write_all(&generate_j6_ipc_msg(MsgType::Response, false, K::I64(42)).unwrap())
+                .unwrap();
+            drop(first);
+        });
+        let mut connector = Connector::new("not a DNS name", 0, "", "", false, 0, 6);
+        connector
+            .configure(ConnectorSettings {
+                unix_socket: Some(path),
+                connect_timeout: Some(Duration::from_secs(1)),
+                write_timeout: Some(Duration::from_millis(25)),
+                ..ConnectorSettings::default()
+            })
+            .unwrap();
+        connector.connect().unwrap();
+        let error = connector
+            .execute_async(&"a".repeat(4 * 1024 * 1024), &[])
+            .expect_err("the Unix peer is not reading the request");
+        assert!(matches!(&error, XqdbError::IOError(error)
+            if matches!(error.kind(), io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock)));
+        assert_eq!(connector.execute("6*7", &[]).unwrap(), K::I64(42));
+        connector.shutdown().unwrap();
+        peer.join().unwrap();
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn unix_abstract_socket_connects_to_a_q_style_address() {
+        use std::os::linux::net::SocketAddrExt;
+        use std::os::unix::net::{SocketAddr as UnixSocketAddr, UnixListener};
+
+        let name = format!("/tmp/xqdb-abstract-{}", std::process::id());
+        let address = UnixSocketAddr::from_abstract_name(name.as_bytes()).unwrap();
+        let listener = UnixListener::bind_addr(&address).unwrap();
+        let peer = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            server_authenticate(&mut stream);
+            server_read_frame(&mut stream);
+            stream
+                .write_all(&generate_j6_ipc_msg(MsgType::Response, false, K::I64(42)).unwrap())
+                .unwrap();
+        });
+        let mut connector = Connector::new("not a DNS name", 0, "", "", false, 1, 6);
+        connector
+            .configure(ConnectorSettings {
+                unix_socket: Some(PathBuf::from(format!("@{name}"))),
+                ..ConnectorSettings::default()
+            })
+            .unwrap();
+        assert_eq!(connector.execute("6*7", &[]).unwrap(), K::I64(42));
+        connector.shutdown().unwrap();
+        peer.join().unwrap();
     }
 }

@@ -27,6 +27,7 @@ XQDB is independent and not affiliated with or endorsed by KX. kdb+ is a tradema
 - Backend-independent eager DataFrame and Series exchange through Arrow
 - Immutable `XqdbQValue` values for lossless typed atoms, nulls, infinities, dictionaries, and supported q function forms
 - TLS hostname verification, additional trusted CAs, and client certificates
+- Local Unix-domain sockets, including Linux abstract socket names, with the same q authentication and cancellation
 - Connection-only retries with exponential backoff; queries are never automatically replayed after an ambiguous I/O failure
 - Out-of-band socket cancellation, connection lifecycle helpers, and bounded query-result batches
 - Configurable compression, phase timeouts, inbound frame limits, notification capacity, and Node queue/snapshot limits
@@ -37,12 +38,13 @@ XQDB is independent and not affiliated with or endorsed by KX. kdb+ is a tradema
 | Surface             | Supported                                                                                                                                                                                                          | Boundary                                                                                                                                           |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | IPC                 | Little-endian v6 framing, standard q IPC compression, sync responses, and async notifications                                                                                                                      | Big-endian frames and unsupported message/type/opcode forms are rejected; this is not a claim of every q protocol feature                          |
+| Transport           | TCP with optional TLS; filesystem Unix sockets and Linux/Android abstract Unix sockets                                                                                                                             | Unix sockets exclude TCP endpoint and TLS options; unavailable on Windows                                                                          |
 | Native values       | Host scalars, eager Arrow-backed tables/series, and supported containers                                                                                                                                           | Native conversion can reject values it cannot represent faithfully; timestamp infinities and duplicate dictionary keys are not silently normalized |
 | Lossless values     | Validated q value-body bytes, including standard typed atoms/vectors, mixed lists, arbitrary/duplicate dictionary keys, keyed/sorted tables, lambdas, primitives, projections, compositions, and derived functions | Preserves supported wire values rather than coercing them through a host dictionary or datetime; validation still rejects unsupported forms        |
 | In-memory helpers   | Complete IPC messages or a single value body, with exact consumption and compressed-input validation                                                                                                               | Trailing data, malformed backreferences, and inconsistent lengths fail rather than being ignored                                                   |
 | On-disk tables      | Regular q binary table files, uncompressed or Kxzip LZ4 algorithm 4; power-of-two logical blocks from 4 KiB through 4 MiB                                                                                          | No HDB discovery, splayed/partitioned database assembly, enum resolution, or other Kxzip algorithms                                                |
 | Bounded consumption | Python `iter_batches()` and Node `batches()` request explicit `(offset; count)` pages                                                                                                                              | Each page is a separate query, not a server snapshot or a streaming decoder for one oversized reply                                                |
-| Cancellation        | Active attached-socket I/O and retry backoff can be interrupted; idle cancellation preserves the connection                                                                                                        | An in-progress system DNS/TCP call must return first. The connect timeout bounds TCP establishment, not system DNS resolution                      |
+| Cancellation        | Active attached-socket I/O and retry backoff can be interrupted; idle cancellation preserves the connection                                                                                                        | An in-progress DNS/socket-connect call must return first. Connect timeout bounds socket establishment, not DNS; Unix endpoints do not resolve DNS  |
 
 Retries mean additional connection attempts: `0` tries once, `N` tries at most
 `N + 1` times. Both bindings wait 1, 2, 4, 8, 16, then 32 seconds before retries,
@@ -56,6 +58,15 @@ behavior. Checked native buffer growth is not a process-wide no-abort guarantee.
 
 ### Unreleased changes
 
+- Python `Q(unix_socket=...)` and Node `Q.connect({ unixSocket: ... })` support
+  local Unix sockets without TCP fallback. Filesystem paths work on Unix;
+  `@name` selects the Linux/Android abstract namespace. Timeout inheritance,
+  q authentication, cancellation, and reconnect behavior are shared with TCP.
+- Normal TLS disconnect sends a best-effort `close_notify`, with flushing capped
+  at one second and any shorter enabled write timeout. Cancellation, protocol
+  errors, and object destruction retain immediate socket shutdown.
+- Rustls now requires at least `0.23.46`, and the lockfile includes that release's
+  security and I/O fixes plus its required crypto dependency updates.
 - Node preserves typed empty Arrow vectors, including q symbol vectors, and
   retains dictionary values across independently encoded chunks and slices.
 - Both bindings use a 30-second default socket timeout, accept fractions, and

@@ -46,8 +46,12 @@ const NANOS_PER_DAY: i64 = 86_400 * NANOS_PER_SECOND;
 
 #[napi(object)]
 pub struct NativeOptions {
-    pub host: String,
-    pub port: f64,
+    /// TCP host; required with `port` unless `unixSocket` is set.
+    pub host: Option<String>,
+    pub port: Option<f64>,
+    /// Unix-domain socket path, or `@name` for a Linux abstract socket; excludes `host`, `port`,
+    /// and every TLS option.
+    pub unix_socket: Option<String>,
     pub user: Option<String>,
     pub password: Option<String>,
     pub tls: Option<bool>,

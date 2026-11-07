@@ -72,7 +72,7 @@ q IPC authentication sends credentials in cleartext when TLS is disabled. Enable
 
 `connect()`, `disconnect()`, `sync()`, `asyn()`, and `receive()` all return promises. `sync()` is a synchronous q IPC request/response transaction, not a synchronous JavaScript function. Calls on one `Q` reserve ordered placeholders in its bounded native FIFO before returning, including calls made reentrantly by argument getters, so complete IPC transactions cannot interleave. `queueCapacity` controls the pending-command limit, defaults to 8, and must be from 1 through 1024. `sync()` and `asyn()` reserve capacity before inspecting or copying arguments, including before JavaScript Arrow IPC serialization. Admission never waits on the JavaScript thread: a full queue, an argument snapshot above `maxArgumentBytes` (64 MiB by default), or aggregate native queued snapshots (including expression bytes) above `maxQueuedBytes` (512 MiB by default) fail with `XQDB_BACKPRESSURE`. `maxQueuedBytes` limits native-owned queued expression and value snapshots; JavaScript encoding temporaries, completed results, and third-party allocator overhead are outside that quota, so it is not a total-heap ceiling. Native permits are connector-specific and single-use, and all reservations are released on conversion failure, native failure, cancellation, disconnect, or object cleanup.
 
-The default socket timeout is 30,000 milliseconds. Every timeout must be finite and non-negative and cannot exceed 24 hours (86,400,000 milliseconds). `timeout` is the fallback for connect, read, and write operations; fractional milliseconds are preserved rather than rounded up to whole seconds. Set `connectTimeout`, `readTimeout`, or `writeTimeout` to override one phase; omission inherits `timeout`, and an explicit `0` disables that timeout. Positive values below one nanosecond are clamped to one nanosecond, with actual socket timing subject to operating-system resolution. Python exposes the same policy in seconds, with a default of 30. These are TCP connection and socket I/O limits, not whole-query deadlines: queueing and system DNS resolution are not bounded by them.
+The default socket timeout is 30,000 milliseconds. Every timeout must be finite and non-negative and cannot exceed 24 hours (86,400,000 milliseconds). `timeout` is the fallback for connect, read, and write operations; fractional milliseconds are preserved rather than rounded up to whole seconds. Set `connectTimeout`, `readTimeout`, or `writeTimeout` to override one phase; omission inherits `timeout`, and an explicit `0` disables that timeout. Positive values below one nanosecond are clamped to one nanosecond, with actual socket timing subject to operating-system resolution. Python exposes the same policy in seconds, with a default of 30. These are socket connection and I/O limits, not whole-query deadlines: queueing and system DNS resolution are not bounded by them.
 
 `retries` is the number of additional attempts made by an explicit `connect()` after an IO failure. An actual retry waits 1, 2, 4, 8, 16, then 32 seconds; further retry waits remain capped at 32 seconds. All attempts occupy one FIFO transaction; authentication failures and cancellation are not retried. Query methods establish the native connection automatically when needed. `compression` is `"auto"` by default, `"on"` to request compression for payloads at least `compressionThreshold` bytes, or `"off"` to disable it. `maxMessageBytes` sets an optional ceiling for the total uncompressed inbound IPC frame, including its header. `maxPendingNotifications` bounds buffered unsolicited async messages; overflow fails and closes the connection rather than dropping a notification.
 
@@ -90,9 +90,41 @@ const value = await q.sync("42");
 
 Always call `disconnect()` in `finally` or an equivalent cleanup hook instead of relying on garbage collection.
 
+Normal disconnect of an idle TLS connection attempts `close_notify` before
+closing TCP. The best-effort flush is capped at one second and any shorter enabled
+write timeout, even when ordinary I/O timeouts are disabled. Cancellation,
+protocol errors, and object destruction retain immediate socket shutdown.
+
 Cancellation leaves queued commands intact and is a no-op while the connection is idle.
 
-`cancel()` is an out-of-band interruption rather than a command queued behind the connection's FIFO. It promptly interrupts active connected-socket IO and retry waits. If an operating-system DNS resolution or TCP establishment call is already in progress before a connected socket is available to the abort handle, cancellation is observed after that call returns. `connectTimeout` bounds only TCP establishment; it does not bound system DNS resolution. The cancellation is still remembered, no connection retry follows it, and the active operation rejects with `XQDB_IO`. Reconnect and restore any server-side subscription state before reusing the `Q`.
+`cancel()` is an out-of-band interruption rather than a command queued behind the connection's FIFO. It promptly interrupts active connected-socket IO and retry waits. If an operating-system DNS resolution or socket establishment call is already in progress before a connected socket is available to the abort handle, cancellation is observed after that call returns. `connectTimeout` bounds only socket establishment; it does not bound system DNS resolution. Unix endpoints skip DNS. The cancellation is still remembered, no connection retry follows it, and the active operation rejects with `XQDB_IO`. Reconnect and restore any server-side subscription state before reusing the `Q`.
+
+### Unix-domain sockets
+
+```ts
+const local = await Q.connect({ unixSocket: "/tmp/kx.5010" });
+try {
+  console.log(await local.sync("6*7"));
+} finally {
+  await local.disconnect();
+}
+```
+
+Filesystem paths work on Unix platforms, including macOS. Modern q on Linux uses
+an abstract socket by default; select it with `unixSocket: "@/tmp/kx.5010"`.
+The `@` prefix is supported only on Linux/Android. q's `QUDSPATH` can change or
+disable the endpoint; see
+[q's Unix socket setup](https://code.kx.com/q/basics/listening-port/#unix-domain-socket).
+
+`QOptions` accepts exactly one endpoint: TCP `host`/`port`, or `unixSocket`.
+Do not pass TCP fields or any TLS options with `unixSocket`. Unsupported platforms
+(including Windows) fail explicitly, without TCP fallback. Authentication,
+timeout inheritance, retries, cancellation, and reconnects use the same behavior
+as TCP, without DNS resolution. Unix connections count as local for automatic
+compression.
+
+Unix sockets are not encrypted: trust the local endpoint and its access controls.
+Abstract sockets do not have filesystem permission checks.
 
 ### Operators and lambdas
 

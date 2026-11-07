@@ -119,6 +119,30 @@ describe("q native delegation", () => {
     }
   });
 
+  it("rejects Unix socket paths beside TCP endpoints or TLS, and malformed paths", () => {
+    for (const options of [
+      { host: "localhost" },
+      { port: 5010 },
+      { tls: false },
+      { tls: true },
+      { tlsCa: "ca" },
+      { tlsCert: "cert", tlsKey: "key" },
+      { tlsServerName: "q.example" },
+    ]) {
+      // @ts-expect-error QUnixSocketOptions excludes TCP endpoint fields and TLS.
+      expect(() => new Q({ unixSocket: "/tmp/kx.5010", ...options })).toThrow(RangeError);
+    }
+    for (const unixSocket of ["", "/tmp/kx\0.5010"]) {
+      expect(() => new Q({ unixSocket })).toThrow(RangeError);
+    }
+    // @ts-expect-error Runtime validation must reject non-string socket paths.
+    expect(() => new Q({ unixSocket: 5010 })).toThrow(TypeError);
+  });
+
+  it.runIf(process.platform === "win32")("rejects Unix socket paths on Windows", () => {
+    expect(() => new Q({ unixSocket: "/tmp/kx.5010" })).toThrow(TypeError);
+  });
+
   it("reads each option once without crossing an earlier validation gate", async () => {
     let portTouched = false;
     const invalidHost = {

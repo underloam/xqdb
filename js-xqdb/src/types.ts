@@ -12,12 +12,10 @@ export type XqdbSymbolEncoding = "strict" | "lossy";
 
 export type XqdbCompression = "auto" | "on" | "off";
 
-export interface QOptions {
-  readonly host: string;
-  readonly port: number;
+/** Options shared by TCP and Unix-domain socket connections. */
+export interface QConnectionOptions {
   readonly user?: string;
   readonly password?: string;
-  readonly tls?: boolean;
   /**
    * Default socket timeout in milliseconds; 0 disables it; defaults to 30,000;
    * maximum 86,400,000.
@@ -40,10 +38,6 @@ export interface QOptions {
   readonly writeTimeout?: number;
   readonly maxMessageBytes?: number;
   readonly maxPendingNotifications?: number;
-  readonly tlsCa?: string;
-  readonly tlsCert?: string;
-  readonly tlsKey?: string;
-  readonly tlsServerName?: string;
   /** Maximum pending native commands for one connection; defaults to 8. */
   readonly queueCapacity?: number;
   /** Maximum bytes in one admitted native argument snapshot; defaults to 64 MiB. */
@@ -51,6 +45,37 @@ export interface QOptions {
   /** Maximum aggregate bytes in native-owned queued expression/value snapshots; defaults to 512 MiB. */
   readonly maxQueuedBytes?: number;
 }
+
+/** Connects to `host:port` over TCP, optionally with TLS. */
+export interface QTcpOptions extends QConnectionOptions {
+  readonly host: string;
+  readonly port: number;
+  readonly unixSocket?: never;
+  readonly tls?: boolean;
+  readonly tlsCa?: string;
+  readonly tlsCert?: string;
+  readonly tlsKey?: string;
+  readonly tlsServerName?: string;
+}
+
+/** Connects through a local Unix-domain socket on Linux or macOS, without TLS. */
+export interface QUnixSocketOptions extends QConnectionOptions {
+  /**
+   * Socket path such as `/tmp/kx.5010`, or `@/tmp/kx.5010` for a Linux abstract socket; must be
+   * non-empty and free of NUL characters.
+   */
+  readonly unixSocket: string;
+  readonly host?: never;
+  readonly port?: never;
+  readonly tls?: never;
+  readonly tlsCa?: never;
+  readonly tlsCert?: never;
+  readonly tlsKey?: never;
+  readonly tlsServerName?: never;
+}
+
+/** Exactly one endpoint: TCP `host` and `port`, or a `unixSocket` path. */
+export type QOptions = QTcpOptions | QUnixSocketOptions;
 
 export function validatedSymbolEncoding(
   value: unknown,

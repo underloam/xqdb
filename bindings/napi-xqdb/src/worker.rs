@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     mpsc::{self, Receiver, SyncSender, TrySendError},
@@ -685,12 +686,17 @@ impl TryFrom<NativeOptions> for WorkerOptions {
     type Error = napi::Error;
 
     fn try_from(options: NativeOptions) -> Result<Self, Self::Error> {
-        let port = exact_port(options.port)?;
-        let host = if options.host.is_empty() {
-            "127.0.0.1".to_owned()
-        } else {
-            options.host
-        };
+        let has_tls_options = options.tls.is_some()
+            || options.tls_ca.is_some()
+            || options.tls_cert.is_some()
+            || options.tls_key.is_some()
+            || options.tls_server_name.is_some();
+        let (host, port, unix_socket) = native_endpoint(
+            options.host,
+            options.port,
+            options.unix_socket,
+            has_tls_options,
+        )?;
         let tls = options.tls.unwrap_or(false);
         if tls && host.parse::<IpAddr>().is_err() && ServerName::try_from(host.as_str()).is_err() {
             return Err(invalid_arg(
@@ -761,6 +767,7 @@ impl TryFrom<NativeOptions> for WorkerOptions {
             "maxQueuedBytes",
         )?;
         let settings = ConnectorSettings {
+            unix_socket,
             value_mode,
             compression,
             compression_threshold,
@@ -808,6 +815,46 @@ impl WorkerOptions {
             .map_err(|error| invalid_arg(error.to_string()))?;
         Ok(connector)
     }
+}
+
+/// Resolves the single endpoint a connector may use. A Unix-domain socket keeps an empty-host,
+/// zero-port placeholder for `Connector::new`; `ConnectorSettings::unix_socket` overrides it.
+fn native_endpoint(
+    host: Option<String>,
+    port: Option<f64>,
+    unix_socket: Option<String>,
+    has_tls_options: bool,
+) -> napi::Result<(String, u16, Option<PathBuf>)> {
+    let Some(path) = unix_socket else {
+        let (Some(host), Some(port)) = (host, port) else {
+            return Err(invalid_arg(
+                "host and port are required unless unixSocket is set",
+            ));
+        };
+        let port = exact_port(port)?;
+        let host = if host.is_empty() {
+            "127.0.0.1".to_owned()
+        } else {
+            host
+        };
+        return Ok((host, port, None));
+    };
+    if host.is_some() || port.is_some() {
+        return Err(invalid_arg(
+            "unixSocket cannot be combined with host or port",
+        ));
+    }
+    if has_tls_options {
+        return Err(invalid_arg(
+            "unixSocket cannot be combined with TLS options",
+        ));
+    }
+    if path.is_empty() || path.contains('\0') {
+        return Err(invalid_arg(
+            "unixSocket must be a non-empty path without NUL characters",
+        ));
+    }
+    Ok((String::new(), 0, Some(PathBuf::from(path))))
 }
 
 fn invalid_arg(message: impl Into<String>) -> napi::Error {
@@ -1178,8 +1225,9 @@ mod tests {
 
     fn native_options(timeout_milliseconds: f64) -> NativeOptions {
         NativeOptions {
-            host: "127.0.0.1".into(),
-            port: 1.0,
+            host: Some("127.0.0.1".into()),
+            port: Some(1.0),
+            unix_socket: None,
             user: None,
             password: None,
             tls: None,
@@ -1201,6 +1249,14 @@ mod tests {
             max_argument_bytes: None,
             max_queued_bytes: None,
         }
+    }
+
+    fn unix_socket_options(path: &str) -> NativeOptions {
+        let mut options = native_options(1_000.0);
+        options.host = None;
+        options.port = None;
+        options.unix_socket = Some(path.into());
+        options
     }
 
     #[test]
@@ -1469,7 +1525,7 @@ mod tests {
     #[test]
     fn rejects_fractional_ports_and_excessive_queue_capacity() {
         let mut fractional_port = native_options(1.0);
-        fractional_port.port = 1800.5;
+        fractional_port.port = Some(1800.5);
         assert_eq!(
             WorkerOptions::try_from(fractional_port)
                 .err()
@@ -1523,5 +1579,54 @@ mod tests {
             .err()
             .expect("custom trust must require TLS");
         assert_eq!(error.status, Status::InvalidArg);
+    }
+
+    #[test]
+    fn unix_socket_excludes_tcp_endpoint_tls_and_malformed_paths() {
+        let mut with_host = unix_socket_options("/tmp/kx.5010");
+        with_host.host = Some("127.0.0.1".into());
+        let mut with_port = unix_socket_options("/tmp/kx.5010");
+        with_port.port = Some(5010.0);
+        let mut with_tls = unix_socket_options("/tmp/kx.5010");
+        with_tls.tls = Some(true);
+        let mut with_tls_disabled = unix_socket_options("/tmp/kx.5010");
+        with_tls_disabled.tls = Some(false);
+        let mut with_tls_ca = unix_socket_options("/tmp/kx.5010");
+        with_tls_ca.tls_ca = Some("ca".into());
+        let mut with_tls_server_name = unix_socket_options("/tmp/kx.5010");
+        with_tls_server_name.tls_server_name = Some("q.example".into());
+        for options in [
+            with_host,
+            with_port,
+            with_tls,
+            with_tls_disabled,
+            with_tls_ca,
+            with_tls_server_name,
+            unix_socket_options(""),
+            unix_socket_options("/tmp/kx\0.5010"),
+        ] {
+            let error = WorkerOptions::try_from(options)
+                .err()
+                .expect("contradictory or malformed unixSocket must be rejected");
+            assert_eq!(error.status, Status::InvalidArg);
+            assert!(error.reason.contains("unixSocket"), "{}", error.reason);
+        }
+    }
+
+    #[test]
+    fn tcp_endpoint_requires_both_host_and_port() {
+        for (host, port) in [
+            (None, Some(1.0)),
+            (Some("127.0.0.1".to_owned()), None),
+            (None, None),
+        ] {
+            let mut options = native_options(1_000.0);
+            options.host = host;
+            options.port = port;
+            let error = WorkerOptions::try_from(options)
+                .err()
+                .expect("incomplete TCP endpoint must be rejected");
+            assert_eq!(error.status, Status::InvalidArg);
+        }
     }
 }

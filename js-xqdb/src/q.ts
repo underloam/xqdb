@@ -12,9 +12,11 @@ import { loadNativeBinding } from "./native-loader.js";
 import type {
   NativeAdmission,
   NativeConnector,
+  NativeEndpoint,
   NativeOptions,
   NativePermit,
   NativeResult,
+  NativeUnixSocketEndpoint,
   NativeValue,
 } from "./native-contract.js";
 import { XqdbQValue } from "./qvalue.js";
@@ -93,7 +95,36 @@ function optionalBoolean(value: unknown, name: string): boolean | undefined {
   return value;
 }
 
-function normalizeOptions(options: QOptions): NormalizedOptions {
+function unixSocketEndpoint(unixSocket: unknown, options: QOptions): NativeUnixSocketEndpoint {
+  if (typeof unixSocket !== "string") {
+    throw new TypeError("QOptions.unixSocket must be a string");
+  }
+  if (options.host !== undefined || options.port !== undefined) {
+    throw new RangeError("QOptions.unixSocket cannot be combined with host or port");
+  }
+  if (
+    options.tls !== undefined ||
+    options.tlsCa !== undefined ||
+    options.tlsCert !== undefined ||
+    options.tlsKey !== undefined ||
+    options.tlsServerName !== undefined
+  ) {
+    throw new RangeError("QOptions.unixSocket cannot be combined with TLS options");
+  }
+  if (unixSocket === "" || unixSocket.includes("\0")) {
+    throw new RangeError("QOptions.unixSocket must be a non-empty path without NUL characters");
+  }
+  if (process.platform === "win32") {
+    throw new TypeError("QOptions.unixSocket is not supported on Windows");
+  }
+  return { unixSocket };
+}
+
+function normalizedEndpoint(options: QOptions): NativeEndpoint {
+  const { unixSocket } = options;
+  if (unixSocket !== undefined) {
+    return unixSocketEndpoint(unixSocket, options);
+  }
   const { host } = options;
   if (typeof host !== "string") {
     throw new TypeError("QOptions.host must be a string");
@@ -102,6 +133,33 @@ function normalizeOptions(options: QOptions): NormalizedOptions {
   if (!Number.isInteger(port) || port < 1 || port > MAX_PORT) {
     throw new RangeError("QOptions.port must be an integer from 1 through 65535");
   }
+  const tls = optionalBoolean(options.tls, "tls");
+  const tlsCert = optionalString(options.tlsCert, "tlsCert");
+  const tlsKey = optionalString(options.tlsKey, "tlsKey");
+  const tlsCa = optionalString(options.tlsCa, "tlsCa");
+  const tlsServerName = optionalString(options.tlsServerName, "tlsServerName");
+  if ((tlsCert === undefined) !== (tlsKey === undefined)) {
+    throw new RangeError("QOptions.tlsCert and tlsKey must be supplied together");
+  }
+  if (
+    tls !== true &&
+    (tlsCa !== undefined || tlsCert !== undefined || tlsServerName !== undefined)
+  ) {
+    throw new RangeError("QOptions TLS credentials and server name require tls: true");
+  }
+  return {
+    host,
+    port,
+    ...(tls === undefined ? {} : { tls }),
+    ...(tlsCa === undefined ? {} : { tlsCa }),
+    ...(tlsCert === undefined ? {} : { tlsCert }),
+    ...(tlsKey === undefined ? {} : { tlsKey }),
+    ...(tlsServerName === undefined ? {} : { tlsServerName }),
+  };
+}
+
+function normalizeOptions(options: QOptions): NormalizedOptions {
+  const endpoint = normalizedEndpoint(options);
   const { timeout } = options;
   const timeoutMilliseconds = checkedTimeout(timeout, "timeout") ?? DEFAULT_TIMEOUT_MILLISECONDS;
   const retriesInput = options.retries;
@@ -165,29 +223,13 @@ function normalizeOptions(options: QOptions): NormalizedOptions {
     DEFAULT_MAX_QUEUED_BYTES,
   );
   const lossless = optionalBoolean(options.lossless, "lossless");
-  const tls = optionalBoolean(options.tls, "tls");
-  const tlsCert = optionalString(options.tlsCert, "tlsCert");
-  const tlsKey = optionalString(options.tlsKey, "tlsKey");
-  const tlsCa = optionalString(options.tlsCa, "tlsCa");
-  const tlsServerName = optionalString(options.tlsServerName, "tlsServerName");
   const user = optionalString(options.user, "user");
   const password = optionalString(options.password, "password");
-  if ((tlsCert === undefined) !== (tlsKey === undefined)) {
-    throw new RangeError("QOptions.tlsCert and tlsKey must be supplied together");
-  }
-  if (
-    tls !== true &&
-    (tlsCa !== undefined || tlsCert !== undefined || tlsServerName !== undefined)
-  ) {
-    throw new RangeError("QOptions TLS credentials and server name require tls: true");
-  }
 
   const native: NativeOptions = {
-    host,
-    port,
+    ...endpoint,
     ...(user === undefined ? {} : { user }),
     ...(password === undefined ? {} : { password }),
-    ...(tls === undefined ? {} : { tls }),
     timeoutMilliseconds,
     ...(symbolEncoding === undefined ? {} : { symbolEncoding }),
     ...(lossless === undefined ? {} : { lossless }),
@@ -198,10 +240,6 @@ function normalizeOptions(options: QOptions): NormalizedOptions {
     ...(writeTimeoutMilliseconds === undefined ? {} : { writeTimeoutMilliseconds }),
     ...(maxMessageBytes === undefined ? {} : { maxMessageBytes }),
     maxPendingNotifications,
-    ...(tlsCa === undefined ? {} : { tlsCa }),
-    ...(tlsCert === undefined ? {} : { tlsCert }),
-    ...(tlsKey === undefined ? {} : { tlsKey }),
-    ...(tlsServerName === undefined ? {} : { tlsServerName }),
     queueCapacity,
     maxArgumentBytes,
     maxQueuedBytes,
@@ -354,7 +392,7 @@ export class Q {
     ensureNativeSuccess(result);
   }
 
-  /** Cancels socket IO/retry waits out of band; connectTimeout bounds TCP setup, not DNS. */
+  /** Cancels socket IO/retry waits out of band; connectTimeout bounds socket setup, not DNS. */
   public async cancel(): Promise<void> {
     if (this.#connectorInstance === undefined) {
       return;

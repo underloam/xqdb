@@ -11,6 +11,7 @@ use pyo3::types::{
 };
 use pyo3::{prelude::*, IntoPyObjectExt};
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 use xqdb::connector::{CompressionMode, Connector, ConnectorAbortHandle, ConnectorSettings};
@@ -480,6 +481,37 @@ fn parse_pem(name: &str, value: Option<Bound<'_, PyAny>>) -> PyResult<Option<Vec
         .transpose()
 }
 
+/// Returns the TCP endpoint for `Connector::new`; core ignores the placeholder for a Unix socket.
+fn parse_endpoint<'a>(
+    host: Option<&'a str>,
+    port: Option<u16>,
+    unix_socket: Option<&Path>,
+) -> PyResult<(&'a str, u16)> {
+    let Some(path) = unix_socket else {
+        return match (host, port) {
+            (Some(host), Some(port)) => Ok((host, port)),
+            _ => Err(PyTypeError::new_err(
+                "host and port are required unless unix_socket is set",
+            )),
+        };
+    };
+    if host.is_some() || port.is_some() {
+        return Err(PyValueError::new_err(
+            "unix_socket cannot be combined with host or port",
+        ));
+    }
+    let path = path.as_os_str().as_encoded_bytes();
+    if path.is_empty() {
+        return Err(PyValueError::new_err("unix_socket must not be empty"));
+    }
+    if path.contains(&0) {
+        return Err(PyValueError::new_err(
+            "unix_socket cannot contain NUL bytes",
+        ));
+    }
+    Ok(("", 0))
+}
+
 const MAX_CONVERSION_DEPTH: usize = 64;
 const MAX_CALL_ARGUMENTS: usize = 8;
 const MICROSECONDS_PER_SECOND: i64 = 1_000_000;
@@ -661,6 +693,7 @@ impl XqdbConnector {
         timeout,
         version,
         *,
+        unix_socket = None,
         lossless = false,
         compression = "auto",
         compression_threshold = 10_000_000,
@@ -676,13 +709,14 @@ impl XqdbConnector {
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn __init__(
-        host: &str,
-        port: u16,
+        host: Option<&str>,
+        port: Option<u16>,
         user: &str,
         password: &str,
         enable_tls: bool,
         timeout: f64,
         version: u8,
+        unix_socket: Option<PathBuf>,
         lossless: bool,
         compression: &str,
         compression_threshold: usize,
@@ -696,6 +730,7 @@ impl XqdbConnector {
         tls_key: Option<Bound<'_, PyAny>>,
         tls_server_name: Option<String>,
     ) -> Result<Self, PyXqdbError> {
+        let (host, port) = parse_endpoint(host, port, unix_socket.as_deref())?;
         if compression_threshold == 0 {
             return Err(
                 PyValueError::new_err("compression_threshold must be a positive integer").into(),
@@ -717,6 +752,7 @@ impl XqdbConnector {
         let mut q = Connector::new(host, port, user, password, enable_tls, 0, version);
         q.timeout = timeout;
         q.configure(ConnectorSettings {
+            unix_socket,
             value_mode: if lossless {
                 ValueMode::Lossless
             } else {
