@@ -228,7 +228,7 @@ kdb+ or KDB-X performance. Full methodology, fidelity matrix, and raw reports:
 [`benchmarks/README.md`](benchmarks/README.md).
 
 <p align="center">
-  <img src=".github/assets/readme-benchmarks.svg" alt="xqdb 100,000-row IPC read benchmarks" width="100%">
+  <img src=".github/assets/readme-benchmarks.svg" alt="xqdb 100,000-row IPC read benchmarks" width="720">
 </p>
 
 ### Node.js — Node 26.3.0

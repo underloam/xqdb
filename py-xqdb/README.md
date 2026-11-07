@@ -1,3 +1,16 @@
+<p align="center">
+  <a href="https://xbbg.org/xqdb/">
+    <img src="https://raw.githubusercontent.com/underloam/xqdb/main/.github/assets/readme-hero-flat.svg" alt="xqdb banner" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/xqdb/"><img src="https://xbbg.org/badges/xqdb/python.svg" alt="xqdb on PyPI"></a>
+  <a href="https://github.com/underloam/xqdb/actions"><img src="https://xbbg.org/badges/xqdb/ci.svg" alt="CI"></a>
+  <a href="https://xbbg.org/xqdb/"><img src="https://xbbg.org/badges/xqdb/docs.svg" alt="Documentation"></a>
+  <a href="https://github.com/underloam/xqdb/blob/main/LICENSE"><img src="https://xbbg.org/badges/xqdb/license.svg" alt="License"></a>
+</p>
+
 # XQDB — Python Bindings
 
 XQDB is independent and not affiliated with or endorsed by KX. kdb+ is a trademark of KX.
